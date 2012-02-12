@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>HTML5 Bytebeat</title>
+<script src="js/lzma.js"></script>
 <script type="text/javascript" src="tdl/base.js"></script>
 <style>
 html, body {
@@ -32,8 +33,14 @@ html, body {
     height: 100%;
     background-color: rgb(0, 0, 66);
 }
+#controls {
+    position: absolute;
+    left: 25px;
+    top: 25px;
+}
 #code {
     position: absolute;
+    left: 25px;
 
     padding: 12px;
 
@@ -57,6 +64,23 @@ html, body {
 textarea:focus {
     outline: 0; /* this removes browser-side outline */
 }
+
+button, select {
+    padding: 8px 12px 8px 12px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 5px;
+    color: #ffffff;
+    background-color: #000000;
+    opacity: 0.5;
+    font-family: Monospace;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+button:hover, select:hover {
+    opacity: 1;
+}
 </style>
 <script>
 tdl.require('tdl.buffers');
@@ -76,11 +100,13 @@ function $(id) {
 var b;
 var gl;
 var ctx;
-var playing = true;
+var playing = false;
 var play;
 var code;
 var canvas;
 var requestId;
+var compressor;
+var dontSet = true;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -89,19 +115,47 @@ function log(msg) {
 }
 
 function main() {
+  compressor = new LZMA( "js/lzma_worker.js" );
   canvas = $("visualization");
-  play = $("play");
+  controls = $("controls");
 
   b = new ByteBeat();
-
   if (!b.good) {
     alert("This page needs a browser the supports the Web Audio API: Chrome, Safari, Chromium or WebKit");
   }
 
+  timeDisplay = document.createElement('button');
+  controls.appendChild(timeDisplay);
+  timeDisplay.addEventListener('click', function() {
+    b.reset();
+    updateTimeDisplay();
+  });
+
+  function playPause() {
+    playing = !playing;
+    if (playing) {
+      b.play();
+      play.textContent = "pause ■";
+    } else {
+      b.pause();
+      play.textContent = " play ▶";
+      updateTimeDisplay();
+    }
+  }
+  play = document.createElement('button');
+  play.addEventListener('click', playPause);
+
+  controls.appendChild(play);
+
+  compileStatus = document.createElement('button');
+  compileStatus.textContent = "---";
+  controls.appendChild(compileStatus);
+
+  errorMessage = document.createElement('button');
+  controls.appendChild(errorMessage);
+
   gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false}, function(){});
   v = gl ? new WebGLVisualizer() : new CanvasVisualizer();
-
-  play.addEventListener('click', playPause);
 
   code = $("code");
   code.addEventListener('keyup', function(event) {
@@ -130,14 +184,21 @@ function main() {
       }
   }, false);
 
-  compile();
+
+  if (window.location.hash) {
+    var hash = window.location.hash.substr(1);
+    readURL(hash);
+  } else {
+    readURL('bb=5d000001002800000000000000001468990403ebf10d536034d5fd73f2557286d4c85deff9b67306b82b4277e715b27491eb4bffff73bdc000');
+  }
 
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
-  b.play();
+  playPause();
 
   function render() {
     if (playing) {
+      updateTimeDisplay();
       v.render();
     }
     requestId = tdl.webgl.requestAnimationFrame(render, canvas);
@@ -145,9 +206,12 @@ function main() {
   render();
 }
 
+function updateTimeDisplay() {
+  timeDisplay.textContent = b.getTime();
+};
+
 function onWindowResize(event) {
   code.style.top = '75px';
-  code.style.left = '25px';
   code.style.width = ( window.innerWidth - 75 ) + 'px';
   code.style.height = ( window.innerHeight - 125 ) + 'px';
 
@@ -155,22 +219,66 @@ function onWindowResize(event) {
 }
 
 function compile() {
-  if (b.setExpression(code.value)) {
-    log("success");
+  var error = b.setExpression(code.value);
+  if (error == null) {
+    errorMessage.style.display = "none";
+    compileStatus.textContent = "compiled successfully";
+    compileStatus.style.color = "#0F0";
+    setURL(code.value);
   } else {
-    log("fail");
+    errorMessage.style.display = "";
+    errorMessage.textContent = error;
+    compileStatus.textContent = "compiled with errors";
+    compileStatus.style.color = "#F00";
   }
 }
 
-function playPause() {
-  playing = !playing;
-  if (playing) {
-    b.play();
-    play.value = "pause";
-  } else {
-    b.pause();
-    play.value = "play";
+var dummyFunction = function() {};
+
+function setURL(byteBeat) {
+  if (dontSet) {
+    dontSet = false;
+    return;
   }
+  compressor.compress(byteBeat, 1, function(bytes) {
+    var hex = convertBytesToHex(bytes);
+    window.location.replace('#bb=' + hex);
+  },
+  dummyFunction);
+}
+
+function readURL(hash) {
+  var bytes = convertHexToBytes(hash.substr(3));
+  compressor.decompress(bytes, function(text) {
+    code.value = text;
+    compile();
+  },
+  dummyFunction);
+}
+
+function convertHexToBytes(text) {
+  var array = [];
+  for (var i = 0; i < text.length; i += 2) {
+    var tmpHex = text.substring(i, i + 2);
+    array.push(parseInt(tmpHex, 16));
+  }
+  return array;
+}
+
+function convertBytesToHex(byteArray) {
+  var hex = "";
+  for (var i = 0, il = byteArray.length; i < il; i++) {
+    if (byteArray[i] < 0) {
+      byteArray[i] = byteArray[i] + 256;
+    }
+    var tmpHex = byteArray[i].toString(16);
+    // add leading zero
+    if (tmpHex.length == 1) {
+      tmpHex = "0" + tmpHex;
+    }
+    hex += tmpHex;
+  }
+  return hex;
 }
 
 ByteBeat = function() {
@@ -191,27 +299,39 @@ ByteBeat = function() {
   }
 };
 
+function strip(s) {
+  return s.replace(/^\s+/,"").replace(/\s+$/,"");
+}
+
+ByteBeat.prototype.reset = function() {
+  this.time = 0;
+};
+
+ByteBeat.prototype.getTime = function() {
+  return this.convertToDesiredSampleRate(this.time);
+};
+
 ByteBeat.prototype.setExpression = function(x) {
   try {
-    var c = "temp = {fn: function(t) { return " + x + ";}}";
+    var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
   } catch (e) {
-    return false;
+    return e.toString();
   }
 
   try {
     for (var i = 0; i < 1000; i += 100) {
       var s = f(i);
       if (typeof s != "number") {
-        return false;
+        return "NaN";
       }
     }
   } catch (e) {
-    return false;
+    return e.toString();
   }
 
   this.fn = f;
-  return true;
+  return null;
 };
 
 ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
@@ -370,9 +490,9 @@ CanvasVisualizer.prototype.render = function() {
 </div>
 <div id="foreground">
 <div id="controls">
-  <input type="button" id="play" value="pause"/>
 </div>
-<textarea id="code">((((t >> 10) & 42) * t) & 255) / 127 - 1</textarea>
+  <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
+<textarea id="code"></textarea>
 </div>
 <script id="vertexShader" type="not-js">
 attribute float column;
