@@ -13,7 +13,7 @@ Most bytebeat is limited to 8 byte values but that limitation is removed here.
 In fact you need to provide floating point values from -1 to +1.
 If you want to do traditional bytebeat just surround your function with
 
-    (yourfunction) & 255 / 127 - 1
+    ((yourfunction) & 255) / 127 - 1
 
 Functions are just plain JavaScript.
 
