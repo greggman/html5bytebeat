@@ -72,6 +72,28 @@ tdl.models.Model = function(program, arrays, textures, opt_mode) {
   this.setProgram(program);
 
   var that = this;
+}
+
+tdl.models.Model.prototype.setProgram = function(program) {
+  this.program = program;
+}
+
+tdl.models.Model.prototype.setBuffer = function(name, array, opt_newBuffer) {
+  var target = (name == 'indices') ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+  var b = this.buffers[name];
+  if (!b || opt_newBuffer) {
+    b = new tdl.buffers.Buffer(array, target);
+  } else {
+    b.set(array);
+  }
+  this.buffers[name] = b;
+};
+
+tdl.models.Model.prototype.setBuffers = function(arrays, opt_newBuffers) {
+  var that = this;
+  for (var name in arrays) {
+    this.setBuffer(name, arrays[name], opt_newBuffers);
+  }
   if (this.buffers.indices) {
     this.baseBuffer = this.buffers.indices;
     this.drawFunc = function(totalComponents, startOffset) {
@@ -85,27 +107,6 @@ tdl.models.Model = function(program, arrays, textures, opt_mode) {
     this.drawFunc = function(totalComponents, startOffset) {
       gl.drawArrays(that.mode, startOffset, totalComponents);
     }
-  }
-}
-
-tdl.models.Model.prototype.setProgram = function(program) {
-  this.program = program;
-}
-
-tdl.models.Model.prototype.setBuffer = function(name, array) {
-  var target = (name == 'indices') ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
-  var b = this.buffers[name];
-  if (!b) {
-    b = new tdl.buffers.Buffer(array, target);
-  } else {
-    b.set(array);
-  }
-  this.buffers[name] = b;
-};
-
-tdl.models.Model.prototype.setBuffers = function(arrays) {
-  for (var name in arrays) {
-    this.setBuffer(name, arrays[name]);
   }
 };
 

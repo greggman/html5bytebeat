@@ -30,6 +30,7 @@ html, body {
 #visualization {
     width: 100%;
     height: 100%;
+    background-color: rgb(0, 0, 66);
 }
 #code {
     position: absolute;
@@ -73,6 +74,8 @@ function $(id) {
 }
 
 var b;
+var gl;
+var ctx;
 var playing = true;
 var play;
 var code;
@@ -89,13 +92,14 @@ function main() {
   canvas = $("visualization");
   play = $("play");
 
-  gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false});
-  if (!gl) {
-    return false;
+  b = new ByteBeat();
+
+  if (!b.good) {
+    alert("This page needs a browser the supports the Web Audio API: Chrome, Safari, Chromium or WebKit");
   }
 
-  b = new ByteBeat();
-  v = new Visualizer();
+  gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false}, function(){});
+  v = gl ? new WebGLVisualizer() : new CanvasVisualizer();
 
   play.addEventListener('click', playPause);
 
@@ -148,9 +152,6 @@ function onWindowResize(event) {
   code.style.height = ( window.innerHeight - 125 ) + 'px';
 
   v.resize(canvas.clientWidth, canvas.clientHeight);
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-  gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
 }
 
 function compile() {
@@ -173,21 +174,21 @@ function playPause() {
 }
 
 ByteBeat = function() {
-  if (!window.webkitAudioContext) {
-    return;
-  }
-  this.context = new webkitAudioContext();
-  this.node = this.context.createJavaScriptNode(1024, 1, 1);
-  this.time = 0;
-  this.actualSampleRate = this.context.sampleRate;
+  var that = this;
+  this.buffer = new Float32Array(1024);
   this.desiredSampleRate = 8000;
+  this.time = 0;
   this.fn = function() {
     return 0;
   };
-  this.buffer = new Float32Array(1024);
 
-  var that = this;
-  this.node.onaudioprocess = function(e) { that.process(e) };
+  if (window.webkitAudioContext) {
+    this.context = new webkitAudioContext();
+    this.node = this.context.createJavaScriptNode(1024, 1, 1);
+    this.actualSampleRate = this.context.sampleRate;
+    this.node.onaudioprocess = function(e) { that.process(e) };
+    this.good = true;
+  }
 };
 
 ByteBeat.prototype.setExpression = function(x) {
@@ -252,8 +253,18 @@ ByteBeat.prototype.pause = function() {
   }
 };
 
-Visualizer = function() {
-  var width = 1024;
+WebGLVisualizer = function() {
+  this.temp = new Float32Array(1);
+  this.uniforms = {
+    position: 0
+  };
+  this.resize(512, 512);
+};
+
+WebGLVisualizer.prototype.resize = function(width, height) {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
   var height = new tdl.primitives.AttribBuffer(1, width);
   var column = new tdl.primitives.AttribBuffer(1, width);
   var arrays = {
@@ -261,25 +272,24 @@ Visualizer = function() {
     column: column
   }
   for (var ii = 0; ii < width; ++ii) {
-    height.setElement(ii, [Math.sin(ii / 200)]);
-    column.setElement(ii, [ii / width * 2 - 1]);
+    height.setElement(ii, [Math.sin(ii / width * Math.PI * 2)]);
+    column.setElement(ii, [ii / width]);
   }
-  var program = tdl.programs.loadProgramFromScriptTags(
-      'vertexShader',
-      'fragmentShader');
-  var model = new tdl.models.Model(program, arrays, {}, gl.LINE_STRIP/*gl.POINTS*/);
+  if (!this.model) {
+    var program = tdl.programs.loadProgramFromScriptTags(
+        'vertexShader',
+        'fragmentShader');
+    this.model = new tdl.models.Model(program, arrays, {}, gl.LINE_STRIP/*gl.POINTS*/);
+  } else {
+    this.model.setBuffers(arrays, true);
+  }
   this.width = width;
   this.height = height;
-  this.model = model;
   this.position = 0;
-  this.temp = new Float32Array(1);
 };
 
-Visualizer.prototype.resize = function(width, height) {
-};
-
-var gg = 200;
-Visualizer.prototype.update = function(buffer, length) {
+WebGLVisualizer.prototype.update = function(buffer, length) {
+  // Yes I know this is dumb. I should just do the last 2 at most.
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var view = new Float32Array(buffer.buffer, 0, max);
@@ -289,12 +299,68 @@ Visualizer.prototype.update = function(buffer, length) {
   }
 };
 
-Visualizer.prototype.render = function() {
+WebGLVisualizer.prototype.render = function() {
   gl.clearColor(0,0,0.3,1);
   gl.clear(gl.COLOR_BUFFER_BIT);
   var model = this.model;
-  model.drawPrep();
+  //this.uniforms.position = this.position / this.width;
+  model.drawPrep(this.uniforms);
   model.draw();
+};
+
+CanvasVisualizer = function() {
+  this.ctx = canvas.getContext("2d");
+  this.temp = new Float32Array(1);
+  this.resize(512, 512);
+};
+
+CanvasVisualizer.prototype.resize = function(width, height) {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  this.positions = new Float32Array(width);
+  this.oldPositions = new Float32Array(width);
+  this.width = width;
+  this.height = height;
+  this.position = 0;
+  this.drawPosition = 0;
+  this.drawCount = 0;
+};
+
+CanvasVisualizer.prototype.update = function(buffer, length) {
+  // Yes I know this is dumb. I should just do the last 2 at most.
+  var s = 0;
+  var p = this.position;
+  var ps = this.positions;
+  while (length) {
+    var max = Math.min(length, this.width - p);
+    for (var i = 0; i < max; ++i) {
+      ps[p++] = buffer[s++];
+    }
+    p = p % this.width;
+    this.drawCount += max;
+    length -= max;
+  }
+  this.position = p;
+};
+
+CanvasVisualizer.prototype.render = function() {
+  var count = Math.min(this.drawCount, this.width);
+  var dp = this.drawPosition;
+  var ctx = this.ctx;
+  var old = this.oldPositions;
+  var ps = this.positions;
+  var halfHeight = this.height / 2;
+  ctx.fillStyle = "rgb(255,0,0)";
+  while (count) {
+    ctx.clearRect(dp, old[dp], 1, 1);
+    var newPos = Math.floor(-ps[dp] * halfHeight + halfHeight);
+    ctx.fillRect(dp, newPos, 1, 1);
+    old[dp] = newPos;
+    dp = (dp + 1) % this.width;
+    --count;
+  }
+  this.drawCount = 0;
+  this.drawPosition = dp;
 };
 </script>
 </head>
@@ -311,8 +377,9 @@ Visualizer.prototype.render = function() {
 <script id="vertexShader" type="not-js">
 attribute float column;
 attribute float height;
+uniform float position;
 void main() {
-  gl_Position = vec4(column, height, 0, 1);
+  gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1);
 }
 </script>
 <script id="fragmentShader" type="not-js">
