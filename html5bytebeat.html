@@ -111,6 +111,10 @@ button, select {
 button:hover, select:hover {
     opacity: 1;
 }
+option {
+    color: #ffffff;
+    background-color: #000000;
+}
 </style>
 <script>
 tdl.require('tdl.buffers');
@@ -137,6 +141,7 @@ var canvas;
 var requestId;
 var compressor;
 var dontSet = true;
+var lastByteBeat;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -174,8 +179,25 @@ function main() {
   }
   play = document.createElement('button');
   play.addEventListener('click', playPause);
-
   controls.appendChild(play);
+
+  types = ["bytebeat", "floatbeat"];
+  type = document.createElement('select');
+  for (var i = 0; i < types.length; ++i) {
+    option = document.createElement('option');
+    option.textContent = types[i];
+    if (i == 0) {
+      option.selected = true;
+    }
+    type.appendChild(option);
+  }
+  type.addEventListener('change', function(event) {
+    b.setType(event.target.selectedIndex);
+    setURL(lastByteBeat);
+  }, false);
+  controls.appendChild(type);
+
+
 
   compileStatus = document.createElement('button');
   compileStatus.textContent = "---";
@@ -219,7 +241,7 @@ function main() {
     var hash = window.location.hash.substr(1);
     readURL(hash);
   } else {
-    readURL('bb=5d000001002800000000000000001468990403ebf10d536034d5fd73f2557286d4c85deff9b67306b82b4277e715b27491eb4bffff73bdc000');
+    readURL('t=0&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
   }
 
   onWindowResize();
@@ -234,7 +256,29 @@ function main() {
     requestId = tdl.webgl.requestAnimationFrame(render, canvas);
   }
   render();
+
+
+  function readURL(hash) {
+    var args = hash.split("&");
+    var data = {};
+    for (var i = 0; i < args.length; ++i) {
+      var parts = args[i].split("=");
+      data[parts[0]] = parts[1];
+    }
+    var t = data.t !== undefined ? data.t : 1
+    type.options[type.selectedIndex].selected = false;
+    type.options[t].selected = true;
+    b.setType(parseInt(t));
+    var bytes = convertHexToBytes(data.bb);
+    compressor.decompress(bytes, function(text) {
+      code.value = text;
+      compile();
+    },
+    dummyFunction);
+  }
 }
+
+function dummyFunction() {};
 
 function updateTimeDisplay() {
   timeDisplay.textContent = b.getTime();
@@ -263,29 +307,6 @@ function compile() {
   }
 }
 
-var dummyFunction = function() {};
-
-function setURL(byteBeat) {
-  if (dontSet) {
-    dontSet = false;
-    return;
-  }
-  compressor.compress(byteBeat, 1, function(bytes) {
-    var hex = convertBytesToHex(bytes);
-    window.location.replace('#bb=' + hex);
-  },
-  dummyFunction);
-}
-
-function readURL(hash) {
-  var bytes = convertHexToBytes(hash.substr(3));
-  compressor.decompress(bytes, function(text) {
-    code.value = text;
-    compile();
-  },
-  dummyFunction);
-}
-
 function convertHexToBytes(text) {
   var array = [];
   for (var i = 0; i < text.length; i += 2) {
@@ -311,11 +332,25 @@ function convertBytesToHex(byteArray) {
   return hex;
 }
 
+function setURL(byteBeat) {
+  if (dontSet) {
+    dontSet = false;
+    return;
+  }
+  lastByteBeat = byteBeat;
+  compressor.compress(byteBeat, 1, function(bytes) {
+    var hex = convertBytesToHex(bytes);
+    window.location.replace('#t=' + b.getType() + '&bb=' + hex);
+  },
+  dummyFunction);
+}
+
 ByteBeat = function() {
   var that = this;
   this.buffer = new Float32Array(1024);
   this.desiredSampleRate = 8000;
   this.time = 0;
+  this.floatBeat = false;
   this.fn = function() {
     return 0;
   };
@@ -343,6 +378,12 @@ ByteBeat.prototype.getTime = function() {
 
 ByteBeat.prototype.setExpression = function(x) {
   try {
+    x = x.replace(/sin/g, "Math.sin");
+    x = x.replace(/cos/g, "Math.cos");
+    x = x.replace(/tan/g, "Math.tan");
+    x = x.replace(/floor/g, "Math.floor");
+    x = x.replace(/ceil/g, "Math.ceil");
+    x = x.replace(/int/g, "Math.floor");
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
   } catch (e) {
@@ -368,6 +409,14 @@ ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
   return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
 };
 
+ByteBeat.prototype.setType = function(floatBeat) {
+  this.floatBeat = floatBeat;
+};
+
+ByteBeat.prototype.getType = function() {
+  return this.floatBeat;
+};
+
 ByteBeat.prototype.process = function(e) {
   var data = e.outputBuffer.getChannelData(0);
 
@@ -378,8 +427,14 @@ ByteBeat.prototype.process = function(e) {
   }
   var buffer = this.buffer;
   var fn = this.fn;
-  for (var i = 0; i < lastSample; ++i) {
-    buffer[i] = fn(time++);
+  if (this.floatBeat) {
+    for (var i = 0; i < lastSample; ++i) {
+      buffer[i] = fn(time++);
+    }
+  } else {
+    for (var i = 0; i < lastSample; ++i) {
+      buffer[i] = (fn(time++) & 255) / 127 - 1;
+    }
   }
   var dataLength = data.length;
   for (var i = 0; i < dataLength; ++i) {
