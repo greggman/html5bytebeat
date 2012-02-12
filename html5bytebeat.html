@@ -378,12 +378,12 @@ ByteBeat.prototype.getTime = function() {
 
 ByteBeat.prototype.setExpression = function(x) {
   try {
-    x = x.replace(/sin/g, "Math.sin");
-    x = x.replace(/cos/g, "Math.cos");
-    x = x.replace(/tan/g, "Math.tan");
-    x = x.replace(/floor/g, "Math.floor");
-    x = x.replace(/ceil/g, "Math.ceil");
-    x = x.replace(/int/g, "Math.floor");
+    x = x.replace(/(Math\.)?sin/g, "Math.sin");
+    x = x.replace(/(Math\.)?cos/g, "Math.cos");
+    x = x.replace(/(Math\.)?tan/g, "Math.tan");
+    x = x.replace(/(Math\.)?floor/g, "Math.floor");
+    x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
+    x = x.replace(/(Math\.)?int/g, "Math.floor");
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
   } catch (e) {
