@@ -7,15 +7,13 @@ You provide a function who's only input is time *t* and from that write some cod
 
 In this particular case *t* is 8000hz timer that counts up. For example
 
-    Math.sin(t)
+    sin(t) * 127 + 127
 
-Most bytebeat is limited to 8 byte values but that limitation is removed here.
-In fact you need to provide floating point values from -1 to +1.
-If you want to do traditional bytebeat just surround your function with
+You can choose traditional bytebeat where the output of your function is expected to be 0 to 255
+or you can choose floatbeat where the output is expected to be -1 to +1.
 
-    ((yourfunction) & 255) / 127 - 1
-
-Functions are just plain JavaScript.
+Functions are just plain JavaScript though sin, cos, tan, floor, ceil and int will automatically be converted
+to Math.sin, Math.cos, Math.tan, Math.floor, Math.ceil, and Math.floor respectively.
 
 [Click here to try your hand at Bytebeat](http://greggman.github.com/html5bytebeat/html5bytebeat.html).
 
