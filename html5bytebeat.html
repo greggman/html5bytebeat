@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>HTML5 Bytebeat</title>
+<script type="text/javascript" src="tdl/base.js"></script>
 <style>
 html, body {
     width: 100%;
@@ -57,6 +58,14 @@ textarea:focus {
 }
 </style>
 <script>
+tdl.require('tdl.buffers');
+tdl.require('tdl.fast');
+tdl.require('tdl.models');
+tdl.require('tdl.primitives');
+tdl.require('tdl.programs');
+tdl.require('tdl.textures');
+tdl.require('tdl.webgl');
+
 window.addEventListener('load', main);
 
 function $(id) {
@@ -65,8 +74,10 @@ function $(id) {
 
 var b;
 var playing = true;
+var play;
 var code;
 var canvas;
+var requestId;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -76,16 +87,26 @@ function log(msg) {
 
 function main() {
   canvas = $("visualization");
+  play = $("play");
+
+  gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false});
+  if (!gl) {
+    return false;
+  }
 
   b = new ByteBeat();
+  v = new Visualizer();
 
-  $("play").addEventListener('click', play);
+  play.addEventListener('click', playPause);
+
   code = $("code");
   code.addEventListener('keyup', function(event) {
-    if ( event.keyCode == 37 ) return;
-    if ( event.keyCode == 38 ) return;
-    if ( event.keyCode == 39 ) return;
-    if ( event.keyCode == 40 ) return;
+    if (event.keyCode == 37 ||
+        event.keyCode == 38 ||
+        event.keyCode == 39 ||
+        event.keyCode == 40) {
+      return;
+    }
 
     compile();
   }, false );
@@ -109,9 +130,15 @@ function main() {
 
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
-
   b.play();
 
+  function render() {
+    if (playing) {
+      v.render();
+    }
+    requestId = tdl.webgl.requestAnimationFrame(render, canvas);
+  }
+  render();
 }
 
 function onWindowResize(event) {
@@ -120,8 +147,10 @@ function onWindowResize(event) {
   code.style.width = ( window.innerWidth - 75 ) + 'px';
   code.style.height = ( window.innerHeight - 125 ) + 'px';
 
+  v.resize(canvas.clientWidth, canvas.clientHeight);
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
+  gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
 }
 
 function compile() {
@@ -132,19 +161,21 @@ function compile() {
   }
 }
 
-function play() {
+function playPause() {
   playing = !playing;
-  log(playing);
   if (playing) {
     b.play();
-    $("play").value = "pause";
+    play.value = "pause";
   } else {
     b.pause();
-    $("play").value = "play";
+    play.value = "play";
   }
 }
 
 ByteBeat = function() {
+  if (!window.webkitAudioContext) {
+    return;
+  }
   this.context = new webkitAudioContext();
   this.node = this.context.createJavaScriptNode(1024, 1, 1);
   this.time = 0;
@@ -153,6 +184,7 @@ ByteBeat = function() {
   this.fn = function() {
     return 0;
   };
+  this.buffer = new Float32Array(1024);
 
   var that = this;
   this.node.onaudioprocess = function(e) { that.process(e) };
@@ -161,7 +193,6 @@ ByteBeat = function() {
 ByteBeat.prototype.setExpression = function(x) {
   try {
     var c = "temp = {fn: function(t) { return " + x + ";}}";
-    log(c);
     var f = eval(c).fn;
   } catch (e) {
     return false;
@@ -182,25 +213,89 @@ ByteBeat.prototype.setExpression = function(x) {
   return true;
 };
 
+ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
+  return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+};
+
 ByteBeat.prototype.process = function(e) {
   var data = e.outputBuffer.getChannelData(0);
-  for (var i = 0; i < data.length; ++i) {
-    data[i] = this.fn(Math.floor(this.time++ * this.desiredSampleRate / this.actualSampleRate));
+
+  var time = this.convertToDesiredSampleRate(this.time);
+  var lastSample = this.convertToDesiredSampleRate(data.length) + 1;
+  if (this.buffer.length < lastSample) {
+    this.buffer = new Float32Array(lastSample);
+  }
+  var buffer = this.buffer;
+  var fn = this.fn;
+  for (var i = 0; i < lastSample; ++i) {
+    buffer[i] = fn(time++);
+  }
+  var dataLength = data.length;
+  for (var i = 0; i < dataLength; ++i) {
+    data[i] = buffer[this.convertToDesiredSampleRate(i)];
+  }
+
+  v.update(buffer, lastSample);
+
+  this.time += dataLength;
+};
+
+ByteBeat.prototype.play = function() {
+  if (this.node) {
+    this.node.connect(this.context.destination);
   }
 };
 
-function sound(t) {
-  return ((((t >> 10) & 42) * t) & 255) / 255;
-}
-
-ByteBeat.prototype.play = function() {
-  this.node.connect(this.context.destination);
-};
-
 ByteBeat.prototype.pause = function() {
-  this.node.disconnect();
+  if (this.node) {
+    this.node.disconnect();
+  }
 };
 
+Visualizer = function() {
+  var width = 1024;
+  var height = new tdl.primitives.AttribBuffer(1, width);
+  var column = new tdl.primitives.AttribBuffer(1, width);
+  var arrays = {
+    height: height,
+    column: column
+  }
+  for (var ii = 0; ii < width; ++ii) {
+    height.setElement(ii, [Math.sin(ii / 200)]);
+    column.setElement(ii, [ii / width * 2 - 1]);
+  }
+  var program = tdl.programs.loadProgramFromScriptTags(
+      'vertexShader',
+      'fragmentShader');
+  var model = new tdl.models.Model(program, arrays, {}, gl.LINE_STRIP/*gl.POINTS*/);
+  this.width = width;
+  this.height = height;
+  this.model = model;
+  this.position = 0;
+  this.temp = new Float32Array(1);
+};
+
+Visualizer.prototype.resize = function(width, height) {
+};
+
+var gg = 200;
+Visualizer.prototype.update = function(buffer, length) {
+  while (length) {
+    var max = Math.min(length, this.width - this.position);
+    var view = new Float32Array(buffer.buffer, 0, max);
+    this.model.buffers.height.setRange(view, this.position * 4);
+    this.position = (this.position + max) % this.width;
+    length -= max;
+  }
+};
+
+Visualizer.prototype.render = function() {
+  gl.clearColor(0,0,0.3,1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  var model = this.model;
+  model.drawPrep();
+  model.draw();
+};
 </script>
 </head>
 <body>
@@ -211,9 +306,20 @@ ByteBeat.prototype.pause = function() {
 <div id="controls">
   <input type="button" id="play" value="pause"/>
 </div>
-<textarea id="code">
-((((t >> 10) & 42) * t) & 255) / 255;
-</textarea>
+<textarea id="code">((((t >> 10) & 42) * t) & 255) / 127 - 1</textarea>
 </div>
+<script id="vertexShader" type="not-js">
+attribute float column;
+attribute float height;
+void main() {
+  gl_Position = vec4(column, height, 0, 1);
+}
+</script>
+<script id="fragmentShader" type="not-js">
+precision mediump float;
+void main() {
+  gl_FragColor = vec4(1,0,0,1);
+}
+</script>
 </body>
 </html>

@@ -146,7 +146,7 @@ tdl.webgl.setupWebGL = function(canvas, opt_attribs, opt_onError) {
  */
 tdl.webgl.create3DContext = function(canvas, opt_attribs) {
   if (opt_attribs === undefined) {
-    opt_attribs = {};
+    opt_attribs = {alpha:false};
     tdl.misc.applyUrlSettings(opt_attribs, 'webgl');
   }
   var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];

@@ -70,6 +70,22 @@ tdl.models.Model = function(program, arrays, textures, opt_mode) {
   this.textures = textures;
   this.textureUnits = textureUnits;
   this.setProgram(program);
+
+  var that = this;
+  if (this.buffers.indices) {
+    this.baseBuffer = this.buffers.indices;
+    this.drawFunc = function(totalComponents, startOffset) {
+      gl.drawElements(that.mode, totalComponents, gl.UNSIGNED_SHORT, startOffset);
+    }
+  } else {
+    for (var key in this.buffers) {
+      this.baseBuffer = this.buffers[key];
+      break;
+    }
+    this.drawFunc = function(totalComponents, startOffset) {
+      gl.drawArrays(that.mode, startOffset, totalComponents);
+    }
+  }
 }
 
 tdl.models.Model.prototype.setProgram = function(program) {
@@ -147,8 +163,7 @@ tdl.models.Model.prototype.drawPrep = function() {
  *     textures to set on this models uniforms.
  */
 tdl.models.Model.prototype.draw = function() {
-  var buffers = this.buffers;
-  var totalComponents = buffers.indices.totalComponents();
+  var totalComponents = this.baseBuffer.totalComponents();
   var startOffset = 0;
   for (var ii = 0; ii < arguments.length; ++ii) {
     var arg = arguments[ii];
@@ -168,6 +183,5 @@ tdl.models.Model.prototype.draw = function() {
     }
   }
 
-  gl.drawElements(
-      this.mode, totalComponents, gl.UNSIGNED_SHORT, startOffset);
+  this.drawFunc(totalComponents, startOffset);
 };
