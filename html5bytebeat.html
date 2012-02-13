@@ -355,7 +355,7 @@ function setURL() {
     var hex = convertBytesToHex(bytes);
     window.location.replace(
       '#t=' + b.getType() +
-      '#e=' + b.getExpressionType() +
+      '&e=' + b.getExpressionType() +
       '&bb=' + hex);
   },
   dummyFunction);
