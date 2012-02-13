@@ -366,6 +366,7 @@ ByteBeat = function() {
   this.buffer = new Float32Array(4096);
   this.desiredSampleRate = 8000;
   this.time = 0;
+  this.backTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
   this.fn = function() {
@@ -448,6 +449,7 @@ function strip(s) {
 
 ByteBeat.prototype.reset = function() {
   this.time = 0;
+  this.backTime = 0;
 };
 
 ByteBeat.prototype.getTime = function() {
@@ -597,8 +599,11 @@ ByteBeat.prototype.pause = function() {
 
 WebGLVisualizer = function() {
   this.temp = new Float32Array(1);
-  this.uniforms = {
+  this.waveUniforms = {
     position: 0
+  };
+  this.backgroundUniforms = {
+    offset: 0
   };
   this.resize(512, 512);
 };
@@ -609,22 +614,54 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
   var height = new tdl.primitives.AttribBuffer(1, width * 2);
   var column = new tdl.primitives.AttribBuffer(1, width * 2);
-  var arrays = {
-    height: height,
-    column: column
-  }
   for (var ii = 0; ii < width * 2; ++ii) {
     height.setElement(ii, [Math.sin(ii / width * Math.PI * 2)]);
     column.setElement(ii, [(ii >> 1) / width]);
   }
-  if (!this.model) {
+  if (!this.waveModel) {
+    var arrays = {
+      height: height,
+      column: column
+    }
     var program = tdl.programs.loadProgramFromScriptTags(
-        'vertexShader',
-        'fragmentShader');
-    this.model = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
+        'waveVertexShader',
+        'waveFragmentShader');
+    this.waveModel = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
   } else {
-    this.model.setBuffers(arrays, true);
+    this.waveModel.setBuffers(arrays, true);
   }
+
+  if (!this.backgroundModel) {
+    var tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
+    var arrays = tdl.primitives.createPlane(2, 2, 1, 1);
+    // Don't need the normals.
+    delete arrays.normal;
+    delete arrays.texCoord;
+    // rotate from xz plane to xy plane
+    tdl.primitives.reorient(arrays,
+        [1, 0, 0, 0,
+         0, 0, 1, 0,
+         0, -1, 0, 0,
+         0, 0, 0, 1]);
+    var textures = {
+        tex: tex,
+    };
+    var program = tdl.programs.loadProgramFromScriptTags(
+        'backgroundVertexShader',
+        'backgroundFragmentShader');
+    this.backgroundModel = new tdl.models.Model(program, arrays, textures);
+    this.backgroundTex = tex;
+  }
+
+  this.backWidth = 1024;
+  var sampleBuf = new Uint8Array(this.backWidth);
+  this.backPos = 0;
+  this.backPixel = new Uint8Array(1);
+  this.backgroundTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.backWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
+  this.backgroundBuf = sampleBuf;
+
   this.width = width;
   this.height = height;
   this.position = 0;
@@ -633,33 +670,46 @@ WebGLVisualizer.prototype.resize = function(width, height) {
 WebGLVisualizer.prototype.update = function(buffer, length) {
   // Yes I know this is dumb. I should just do the last 2 at most.
   var dest = this.height.buffer;
+//  var backDest = this.backgroundBuf;
   var offset = 0;
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
+//    var bd = this.position;
     for (i = 0; i < max; ++i) {
       var h1 = buffer[offset++];
       var h2 = buffer[offset];
       dest[d++] = h1;
       dest[d++] = h2 + ((h1 == h2) ? (1 / 256) : 0);
+//      backDest[bd++] = h1 * 127 + 127;
     }
     if (d == this.width * 2) {
       dest[d - 1] = dest[0];
     }
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
-    this.model.buffers.height.setRange(view, this.position * 4 * 2);
+    this.waveModel.buffers.height.setRange(view, this.position * 4 * 2);
+//    var backView = new Uint8Array(this.backgroundBuf.buffer, this.position, max);
+//    this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+//    gl.texSubImage2D(gl.TEXTURE_2D, 0, this.position, 0, max, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, backView);
     this.position = (this.position + max) % this.width;
     length -= max;
   }
 };
 
 WebGLVisualizer.prototype.render = function() {
+  this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  this.backPixel[0] = b.fn(b.backTime++) * 127 + 127;
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, this.backPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.backPixel);
+  this.backPos = this.backPos % this.backWidth;
+
   gl.clearColor(0,0,0.3,1);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  var model = this.model;
-  this.uniforms.position = this.position / this.width;
-  model.drawPrep(this.uniforms);
-  model.draw();
+  this.backgroundUniforms.offset = this.backPos / this.backWidth;
+  this.backgroundModel.drawPrep(this.backgroundUniforms);
+  this.backgroundModel.draw();
+  this.waveUniforms.position = this.position / this.width;
+  this.waveModel.drawPrep(this.waveUniforms);
+  this.waveModel.draw();
 };
 
 CanvasVisualizer = function() {
@@ -728,7 +778,7 @@ CanvasVisualizer.prototype.render = function() {
   <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
 <textarea id="code"></textarea>
 </div>
-<script id="vertexShader" type="not-js">
+<script id="waveVertexShader" type="not-js">
 attribute float column;
 attribute float height;
 uniform float position;
@@ -736,10 +786,33 @@ void main() {
   gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1);
 }
 </script>
-<script id="fragmentShader" type="not-js">
+<script id="waveFragmentShader" type="not-js">
 precision mediump float;
 void main() {
   gl_FragColor = vec4(1,0,0,1);
+}
+</script>
+<script id="backgroundVertexShader" type="not-js">
+attribute vec2 position;
+uniform float offset;
+varying vec2 v_texCoord;
+void main() {
+  gl_Position = vec4(position, 0, 1);
+  v_texCoord = vec2(position * 0.5 + 0.5) + vec2(offset, 0);
+}
+</script>
+<script id="backgroundFragmentShader" type="not-js">
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D tex;
+void main() {
+  int c = int(texture2D(tex, v_texCoord).r * 255.0);
+  int y = int(v_texCoord.y * 8.0);
+  int p = int(pow(2.0, float(y)));
+  c = c / p;
+  float m = mod(float(c), 2.0);
+  float line = mod(gl_FragCoord.y, 3.0) / 2.0;
+  gl_FragColor = vec4(0, 0, m * line, m);
 }
 </script>
 </body>
