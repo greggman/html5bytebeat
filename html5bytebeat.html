@@ -141,7 +141,6 @@ var canvas;
 var requestId;
 var compressor;
 var dontSet = true;
-var lastByteBeat;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -181,23 +180,32 @@ function main() {
   play.addEventListener('click', playPause);
   controls.appendChild(play);
 
-  types = ["bytebeat", "floatbeat"];
-  type = document.createElement('select');
-  for (var i = 0; i < types.length; ++i) {
-    option = document.createElement('option');
-    option.textContent = types[i];
-    if (i == 0) {
-      option.selected = true;
+  function addSelection(options, selectedIndex) {
+    var select = document.createElement('select');
+    for (var i = 0; i < options.length; ++i) {
+      option = document.createElement('option');
+      option.textContent = options[i];
+      if (i == selectedIndex) {
+        option.selected = true;
+      }
+      select.appendChild(option);
     }
-    type.appendChild(option);
+    return select;
   }
+
+  type = addSelection(["bytebeat", "floatbeat"]);
   type.addEventListener('change', function(event) {
     b.setType(event.target.selectedIndex);
-    setURL(lastByteBeat);
+    setURL();
   }, false);
   controls.appendChild(type);
 
-
+  expressionType = addSelection(["infix", "postfix"]);
+  expressionType.addEventListener('change', function(event) {
+    b.setExpressionType(event.target.selectedIndex);
+    compile(b.getExpression());
+  }, false);
+  controls.appendChild(expressionType);
 
   compileStatus = document.createElement('button');
   compileStatus.textContent = "---";
@@ -218,7 +226,7 @@ function main() {
       return;
     }
 
-    compile();
+    compile(code.value);
   }, false );
 
   code.addEventListener('keydown', function(event) {
@@ -241,7 +249,7 @@ function main() {
     var hash = window.location.hash.substr(1);
     readURL(hash);
   } else {
-    readURL('t=0&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
+    readURL('t=0&e=0&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
   }
 
   onWindowResize();
@@ -257,6 +265,10 @@ function main() {
   }
   render();
 
+  function setSelectOption(select, selectedIndex) {
+    select.options[select.selectedIndex].selected = false;
+    select.options[selectedIndex].selected = true;
+  }
 
   function readURL(hash) {
     var args = hash.split("&");
@@ -266,13 +278,15 @@ function main() {
       data[parts[0]] = parts[1];
     }
     var t = data.t !== undefined ? data.t : 1
-    type.options[type.selectedIndex].selected = false;
-    type.options[t].selected = true;
+    var e = data.e !== undefined ? data.e : 0;
+    setSelectOption(type, t);
+    setSelectOption(expressionType, e);
     b.setType(parseInt(t));
+    b.setExpressionType(parseInt(e));
     var bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
       code.value = text;
-      compile();
+      compile(text);
     },
     dummyFunction);
   }
@@ -292,13 +306,13 @@ function onWindowResize(event) {
   v.resize(canvas.clientWidth, canvas.clientHeight);
 }
 
-function compile() {
-  var error = b.setExpression(code.value);
+function compile(byteBeat) {
+  var error = b.setExpression(byteBeat);
   if (error == null) {
     errorMessage.style.display = "none";
     compileStatus.textContent = "compiled successfully";
     compileStatus.style.color = "#0F0";
-    setURL(code.value);
+    setURL(byteBeat);
   } else {
     errorMessage.style.display = "";
     errorMessage.textContent = error;
@@ -332,15 +346,17 @@ function convertBytesToHex(byteArray) {
   return hex;
 }
 
-function setURL(byteBeat) {
+function setURL() {
   if (dontSet) {
     dontSet = false;
     return;
   }
-  lastByteBeat = byteBeat;
-  compressor.compress(byteBeat, 1, function(bytes) {
+  compressor.compress(b.getExpression(), 1, function(bytes) {
     var hex = convertBytesToHex(bytes);
-    window.location.replace('#t=' + b.getType() + '&bb=' + hex);
+    window.location.replace(
+      '#t=' + b.getType() +
+      '#e=' + b.getExpressionType() +
+      '&bb=' + hex);
   },
   dummyFunction);
 }
@@ -351,6 +367,7 @@ ByteBeat = function() {
   this.desiredSampleRate = 8000;
   this.time = 0;
   this.floatBeat = false;
+  this.expressionType = 0;
   this.fn = function() {
     return 0;
   };
@@ -441,8 +458,9 @@ function isOperator(token) {
   return !(token == 't' || (token.charAt(0) >= '0' && token.charAt(0) <= '9'));
 }
 
-ByteBeat.prototype.setExpression = function(x, opt_postFix) {
-  if (opt_postFix || true) {
+ByteBeat.prototype.setExpression = function(x) {
+  var orig = x;
+  if (this.expressionType) {
     try {
       // remove comments (hacky)
       x = x.replace(/\/\*.*?\*\//g, "");
@@ -510,11 +528,24 @@ ByteBeat.prototype.setExpression = function(x, opt_postFix) {
   }
 
   this.fn = f;
+  this.expression = orig;
   return null;
 };
 
 ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
   return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+};
+
+ByteBeat.prototype.setExpressionType = function(postfix) {
+  this.expressionType = postfix;
+};
+
+ByteBeat.prototype.getExpressionType = function() {
+  return this.expressionType;
+};
+
+ByteBeat.prototype.getExpression = function() {
+  return this.expression;
 };
 
 ByteBeat.prototype.setType = function(floatBeat) {
