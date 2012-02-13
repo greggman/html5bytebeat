@@ -347,7 +347,7 @@ function setURL(byteBeat) {
 
 ByteBeat = function() {
   var that = this;
-  this.buffer = new Float32Array(1024);
+  this.buffer = new Float32Array(4096);
   this.desiredSampleRate = 8000;
   this.time = 0;
   this.floatBeat = false;
@@ -359,8 +359,69 @@ ByteBeat = function() {
     this.context = new webkitAudioContext();
     this.node = this.context.createJavaScriptNode(1024, 1, 1);
     this.actualSampleRate = this.context.sampleRate;
-    this.node.onaudioprocess = function(e) { that.process(e) };
+    this.node.onaudioprocess = function(e) {
+      that.process(e.outputBuffer.getChannelData(0));
+    };
     this.good = true;
+  } else {
+    var audio = new Audio()
+    this.audio = audio;
+    if (!audio.mozSetup) {
+      return;
+    }
+    this.good = true;
+
+    function AudioDataDestination(sampleRate, readFn) {
+      // Initialize the audio output.
+      var audio = new Audio();
+      audio.mozSetup(1, sampleRate);
+
+      var currentWritePosition = 0;
+      var prebufferSize = sampleRate / 2; // buffer 500ms
+      var tail = null, tailPosition;
+
+      // The function called with regular interval to populate
+      // the audio output buffer.
+      setInterval(function() {
+        var written;
+        // Check if some data was not written in previous attempts.
+        if(tail) {
+          written = audio.mozWriteAudio(tail.subarray(tailPosition));
+          currentWritePosition += written;
+          tailPosition += written;
+          if(tailPosition < tail.length) {
+            // Not all the data was written, saving the tail...
+            return; // ... and exit the function.
+          }
+          tail = null;
+        }
+
+        // Check if we need add some data to the audio output.
+        var currentPosition = audio.mozCurrentSampleOffset();
+        var available = currentPosition + prebufferSize - currentWritePosition;
+        if(available > 0) {
+          // Request some sound data from the callback function.
+          var soundData = new Float32Array(available);
+          readFn(soundData);
+
+          // Writting the data.
+          written = audio.mozWriteAudio(soundData);
+          if(written < soundData.length) {
+            // Not all the data was written, saving the tail.
+            tail = soundData;
+            tailPosition = written;
+          }
+          currentWritePosition += written;
+        }
+      }, 100);
+    }
+
+    this.actualSampleRate = this.desiredSampleRate;
+    var audioDestination = new AudioDataDestination(this.actualSampleRate, function(buffer) {
+      if (playing) {
+        that.process(buffer);
+      }
+    });
   }
 };
 
@@ -384,6 +445,7 @@ ByteBeat.prototype.setExpression = function(x) {
     x = x.replace(/(Math\.)?floor/g, "Math.floor");
     x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
     x = x.replace(/(Math\.)?int/g, "Math.floor");
+    x = x.replace(/\n/g, " ");
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
   } catch (e) {
@@ -417,9 +479,7 @@ ByteBeat.prototype.getType = function() {
   return this.floatBeat;
 };
 
-ByteBeat.prototype.process = function(e) {
-  var data = e.outputBuffer.getChannelData(0);
-
+ByteBeat.prototype.process = function(data) {
   var time = this.convertToDesiredSampleRate(this.time);
   var lastSample = this.convertToDesiredSampleRate(data.length) + 1;
   if (this.buffer.length < lastSample) {
