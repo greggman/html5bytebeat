@@ -607,21 +607,21 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
   gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
-  var height = new tdl.primitives.AttribBuffer(1, width);
-  var column = new tdl.primitives.AttribBuffer(1, width);
+  var height = new tdl.primitives.AttribBuffer(1, width * 2);
+  var column = new tdl.primitives.AttribBuffer(1, width * 2);
   var arrays = {
     height: height,
     column: column
   }
-  for (var ii = 0; ii < width; ++ii) {
+  for (var ii = 0; ii < width * 2; ++ii) {
     height.setElement(ii, [Math.sin(ii / width * Math.PI * 2)]);
-    column.setElement(ii, [ii / width]);
+    column.setElement(ii, [(ii >> 1) / width]);
   }
   if (!this.model) {
     var program = tdl.programs.loadProgramFromScriptTags(
         'vertexShader',
         'fragmentShader');
-    this.model = new tdl.models.Model(program, arrays, {}, gl.LINE_STRIP/*gl.POINTS*/);
+    this.model = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
   } else {
     this.model.setBuffers(arrays, true);
   }
@@ -632,14 +632,24 @@ WebGLVisualizer.prototype.resize = function(width, height) {
 
 WebGLVisualizer.prototype.update = function(buffer, length) {
   // Yes I know this is dumb. I should just do the last 2 at most.
+  var dest = this.height.buffer;
   var offset = 0;
   while (length) {
     var max = Math.min(length, this.width - this.position);
-    var view = new Float32Array(buffer.buffer, offset * 4, max);
-    this.model.buffers.height.setRange(view, this.position * 4);
+    var d = this.position * 2;
+    for (i = 0; i < max; ++i) {
+      var h1 = buffer[offset++];
+      var h2 = buffer[offset];
+      dest[d++] = h1;
+      dest[d++] = h2 + ((h1 == h2) ? (1 / 256) : 0);
+    }
+    if (d == this.width * 2) {
+      dest[d - 1] = dest[0];
+    }
+    var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
+    this.model.buffers.height.setRange(view, this.position * 4 * 2);
     this.position = (this.position + max) % this.width;
     length -= max;
-    offset += max;
   }
 };
 
@@ -647,7 +657,7 @@ WebGLVisualizer.prototype.render = function() {
   gl.clearColor(0,0,0.3,1);
   gl.clear(gl.COLOR_BUFFER_BIT);
   var model = this.model;
-  //this.uniforms.position = this.position / this.width;
+  this.uniforms.position = this.position / this.width;
   model.drawPrep(this.uniforms);
   model.draw();
 };
