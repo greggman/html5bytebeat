@@ -382,10 +382,11 @@ ByteBeat = function() {
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
-    this.node = this.context.createJavaScriptNode(1024, 1, 1);
+    this.node = this.context.createJavaScriptNode(1024, 2, 2);
     this.actualSampleRate = this.context.sampleRate;
     this.node.onaudioprocess = function(e) {
-      that.process(e.outputBuffer.getChannelData(0));
+      that.process(e.outputBuffer.getChannelData(0),
+                   e.outputBuffer.getChannelData(1));
     };
     this.good = true;
   } else {
@@ -565,9 +566,10 @@ ByteBeat.prototype.getType = function() {
   return this.floatBeat;
 };
 
-ByteBeat.prototype.process = function(data) {
+ByteBeat.prototype.process = function(leftData, rightData) {
+  var dataLength = leftData.length;
   var time = this.convertToDesiredSampleRate(this.time);
-  var lastSample = this.convertToDesiredSampleRate(data.length) + 1;
+  var lastSample = this.convertToDesiredSampleRate(dataLength) + 1;
   if (this.buffer.length < lastSample) {
     this.buffer = new Float32Array(lastSample);
   }
@@ -582,9 +584,19 @@ ByteBeat.prototype.process = function(data) {
       buffer[i] = (fn(time++) & 255) / 127 - 1;
     }
   }
-  var dataLength = data.length;
-  for (var i = 0; i < dataLength; ++i) {
-    data[i] = buffer[this.convertToDesiredSampleRate(i)];
+  if (rightData) {
+    if (rightData.length != dataLength) {
+      throw("leftData.length != rightData.length");
+    }
+    for (var i = 0; i < dataLength; ++i) {
+      var s = buffer[this.convertToDesiredSampleRate(i)];
+      leftData[i] = s;
+      rightData[i] = s;
+    }
+  } else {
+    for (var i = 0; i < dataLength; ++i) {
+      leftData[i] = buffer[this.convertToDesiredSampleRate(i)];
+    }
   }
 
   v.update(buffer, lastSample);
