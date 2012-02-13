@@ -437,7 +437,54 @@ ByteBeat.prototype.getTime = function() {
   return this.convertToDesiredSampleRate(this.time);
 };
 
-ByteBeat.prototype.setExpression = function(x) {
+function isOperator(token) {
+  return !(token == 't' || (token.charAt(0) >= '0' && token.charAt(0) <= '9'));
+}
+
+ByteBeat.prototype.setExpression = function(x, opt_postFix) {
+  if (opt_postFix || true) {
+    try {
+      // remove comments (hacky)
+      x = x.replace(/\/\*.*?\*\//g, "");
+      x = x.replace(/\/\/.*?\n/g, " ");
+      // compress space
+      x = x.replace(/(\r\n|\r|\n|\t| )+/gm, " ");
+      var tokens = strip(x).split(" ");
+      var stack = [];
+      for (var i = 0; i < tokens.length; ++i) {
+        var token = tokens[i];
+        if (isOperator(token)) {
+          switch (token.toLowerCase()) {
+          case 'dup':
+            var a0 = stack.pop();
+            stack.push(a0);
+            stack.push(a0);
+            break;
+          case 'swap':
+            var a1 = stack.pop();
+            var a0 = stack.pop();
+            stack.push(a1);
+            stack.push(a0);
+            break;
+          case 'pick':
+            throw ('not implemented');
+            break;
+          default:
+            var a1 = stack.pop();
+            var a0 = stack.pop();
+            stack.push("(" + a0 + token + a1 + ")");
+            break;
+          }
+        } else {
+          stack.push(token);
+        }
+      }
+      x = stack.pop();
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   try {
     x = x.replace(/(Math\.)?sin/g, "Math.sin");
     x = x.replace(/(Math\.)?cos/g, "Math.cos");
@@ -445,7 +492,6 @@ ByteBeat.prototype.setExpression = function(x) {
     x = x.replace(/(Math\.)?floor/g, "Math.floor");
     x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
     x = x.replace(/(Math\.)?int/g, "Math.floor");
-    x = x.replace(/\n/g, " ");
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
   } catch (e) {
