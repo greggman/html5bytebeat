@@ -3,9 +3,9 @@ HTML5 Bytebeat
 
 Bytebeat is the name of type of music made from math.
 
-You provide a function who's only input is time *t* and from that write some code generate a sound.
+You provide a function who's only input is time *t* and from that write some code to generate a sound.
 
-In this particular case *t* is 8000hz timer that counts up. For example
+In this particular case *t* is an 8000hz timer that counts up. For example
 
     sin(t) * 127 + 127
 
