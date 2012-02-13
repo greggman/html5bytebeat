@@ -632,12 +632,14 @@ WebGLVisualizer.prototype.resize = function(width, height) {
 
 WebGLVisualizer.prototype.update = function(buffer, length) {
   // Yes I know this is dumb. I should just do the last 2 at most.
+  var offset = 0;
   while (length) {
     var max = Math.min(length, this.width - this.position);
-    var view = new Float32Array(buffer.buffer, 0, max);
+    var view = new Float32Array(buffer.buffer, offset * 4, max);
     this.model.buffers.height.setRange(view, this.position * 4);
     this.position = (this.position + max) % this.width;
     length -= max;
+    offset += max;
   }
 };
 
