@@ -132,6 +132,7 @@ function $(id) {
 }
 
 var b;
+var v;
 var gl;
 var ctx;
 var playing = false;
@@ -193,19 +194,25 @@ function main() {
     return select;
   }
 
-  type = addSelection(["bytebeat", "floatbeat"]);
+  type = addSelection(["bytebeat", "floatbeat"], 0);
   type.addEventListener('change', function(event) {
     b.setType(event.target.selectedIndex);
     setURL();
   }, false);
   controls.appendChild(type);
 
-  expressionType = addSelection(["infix", "postfix"]);
+  expressionType = addSelection(["infix", "postfix"], 0);
   expressionType.addEventListener('change', function(event) {
     b.setExpressionType(event.target.selectedIndex);
     compile(b.getExpression());
   }, false);
   controls.appendChild(expressionType);
+
+  visualType = addSelection(["none", "wave"], 1);
+  visualType.addEventListener('change', function(event) {
+    v.setType(event.target.selectedIndex);
+  }, false);
+  controls.appendChild(visualType);
 
   compileStatus = document.createElement('button');
   compileStatus.textContent = "---";
@@ -598,6 +605,7 @@ ByteBeat.prototype.pause = function() {
 };
 
 WebGLVisualizer = function() {
+  this.type = 1;
   this.temp = new Float32Array(1);
   this.waveUniforms = {
     position: 0
@@ -667,43 +675,49 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   this.position = 0;
 };
 
+WebGLVisualizer.prototype.setType = function(type) {
+  this.type = type;
+};
+
 WebGLVisualizer.prototype.update = function(buffer, length) {
+  if (!this.type) {
+    return;
+  }
   // Yes I know this is dumb. I should just do the last 2 at most.
   var dest = this.height.buffer;
-//  var backDest = this.backgroundBuf;
   var offset = 0;
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
-//    var bd = this.position;
     for (i = 0; i < max; ++i) {
       var h1 = buffer[offset++];
       var h2 = buffer[offset];
       dest[d++] = h1;
       dest[d++] = h2 + ((h1 == h2) ? (1 / 256) : 0);
-//      backDest[bd++] = h1 * 127 + 127;
     }
     if (d == this.width * 2) {
       dest[d - 1] = dest[0];
     }
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
     this.waveModel.buffers.height.setRange(view, this.position * 4 * 2);
-//    var backView = new Uint8Array(this.backgroundBuf.buffer, this.position, max);
-//    this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-//    gl.texSubImage2D(gl.TEXTURE_2D, 0, this.position, 0, max, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, backView);
     this.position = (this.position + max) % this.width;
     length -= max;
   }
 };
 
 WebGLVisualizer.prototype.render = function() {
+  if (!this.type) {
+    return;
+  }
+
+  gl.clearColor(0,0,0.3,1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
   this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   this.backPixel[0] = b.fn(b.backTime++) * 127 + 127;
   gl.texSubImage2D(gl.TEXTURE_2D, 0, this.backPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.backPixel);
   this.backPos = this.backPos % this.backWidth;
 
-  gl.clearColor(0,0,0.3,1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
   this.backgroundUniforms.offset = this.backPos / this.backWidth;
   this.backgroundModel.drawPrep(this.backgroundUniforms);
   this.backgroundModel.draw();
@@ -716,6 +730,7 @@ CanvasVisualizer = function() {
   this.ctx = canvas.getContext("2d");
   this.temp = new Float32Array(1);
   this.resize(512, 512);
+  this.type = 1;
 };
 
 CanvasVisualizer.prototype.resize = function(width, height) {
@@ -730,7 +745,14 @@ CanvasVisualizer.prototype.resize = function(width, height) {
   this.drawCount = 0;
 };
 
+CanvasVisualizer.prototype.setType = function(type) {
+  this.type = type;
+};
+
 CanvasVisualizer.prototype.update = function(buffer, length) {
+  if (!this.type) {
+    return;
+  }
   // Yes I know this is dumb. I should just do the last 2 at most.
   var s = 0;
   var p = this.position;
@@ -748,6 +770,9 @@ CanvasVisualizer.prototype.update = function(buffer, length) {
 };
 
 CanvasVisualizer.prototype.render = function() {
+  if (!this.type) {
+    return;
+  }
   var count = Math.min(this.drawCount, this.width);
   var dp = this.drawPosition;
   var ctx = this.ctx;
