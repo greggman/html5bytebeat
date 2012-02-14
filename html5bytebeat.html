@@ -165,7 +165,7 @@ function main() {
     g_visualizer.reset();
     g_visualizer.render();
     updateTimeDisplay();
-  });
+  }, false);
 
   function playPause() {
     playing = !playing;
@@ -525,8 +525,7 @@ var g_glitchToPostfix = {
 ByteBeat.prototype.setExpression = function(x) {
   var orig = x;
 
-  function compileExpression(x) {
-    var expressionType = this.expressionType
+  function compileExpression(x, expressionType) {
     if (expressionType == 2) { // glitch
       // Convert to postfix
       var postfix = [];
@@ -604,6 +603,7 @@ ByteBeat.prototype.setExpression = function(x) {
     x = x.replace(/(Math\.)?floor/g, "Math.floor");
     x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
     x = x.replace(/(Math\.)?int/g, "Math.floor");
+
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
 
@@ -621,7 +621,7 @@ ByteBeat.prototype.setExpression = function(x) {
   var funcs = [];
   try {
     for (var i = 0; i < expressions.length; ++i) {
-      funcs.push(compileExpression(expressions[i]));
+      funcs.push(compileExpression(expressions[i], this.expressionType));
     }
   } catch (e) {
     return e.toString();
