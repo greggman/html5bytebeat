@@ -210,7 +210,7 @@ function main() {
   }, false);
   controls.appendChild(expressionTypeElem);
 
-  var sampleRates = [8000, 11025, 22050, 33075, 44100];
+  var sampleRates = [8000, 11000, 22000, 32000, 44100];
   sampleRateElem = addSelection(["8kHz", "11kHz", "22kHz", "32kHz", "44kHz"], 0);
   sampleRateElem.addEventListener('change', function(event) {
     g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
