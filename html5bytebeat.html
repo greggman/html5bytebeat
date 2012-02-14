@@ -298,8 +298,7 @@ function main() {
     var t = data.t !== undefined ? data.t : 1
     var e = data.e !== undefined ? data.e : 0;
     var s = data.s !== undefined ? data.s : 8000;
-
-    for (var i = 0; i < sampleRates; ++i) {
+    for (var i = 0; i < sampleRates.length; ++i) {
       if (s == sampleRates[i]) {
         setSelectOption(sampleRateElem, i);
         break;
