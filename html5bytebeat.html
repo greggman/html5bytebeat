@@ -368,6 +368,7 @@ function setURL() {
   dummyFunction);
 }
 
+var foo;
 ByteBeat = function() {
   var that = this;
   this.buffer = new Float32Array(4096);
@@ -382,7 +383,7 @@ ByteBeat = function() {
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
-    this.node = this.context.createJavaScriptNode(1024, 2, 2);
+    this.node = this.context.createJavaScriptNode(4096, 2, 2);
     this.actualSampleRate = this.context.sampleRate;
     this.node.onaudioprocess = function(e) {
       that.process(e.outputBuffer.getChannelData(0),
@@ -638,11 +639,11 @@ WebGLVisualizer.prototype.resize = function(width, height) {
     height.setElement(ii, [Math.sin(ii / width * Math.PI * 2)]);
     column.setElement(ii, [(ii >> 1) / width]);
   }
+  var arrays = {
+    height: height,
+    column: column
+  }
   if (!this.waveModel) {
-    var arrays = {
-      height: height,
-      column: column
-    }
     var program = tdl.programs.loadProgramFromScriptTags(
         'waveVertexShader',
         'waveFragmentShader');
