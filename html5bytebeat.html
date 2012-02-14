@@ -462,7 +462,7 @@ ByteBeat = function() {
       }, 100);
     }
 
-    this.actualSampleRate = this.desiredSampleRate;
+    this.actualSampleRate = 44100;//this.desiredSampleRate;
     var audioDestination = new AudioDataDestination(this.actualSampleRate, function(buffer) {
       if (playing) {
         that.process(buffer);
