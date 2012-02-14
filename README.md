@@ -15,7 +15,7 @@ or you can choose floatbeat where the output is expected to be -1 to +1.
 Functions are just plain JavaScript though sin, cos, tan, floor, ceil and int will automatically be converted
 to Math.sin, Math.cos, Math.tan, Math.floor, Math.ceil, and Math.floor respectively.
 
-[Click here to try your hand at Bytebeat](http://greggman.github.com/html5bytebeat/html5bytebeat.html).
+[Click here to try your hand at Bytebeat](http://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html).
 
 Here are a few sample songs
 
