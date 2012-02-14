@@ -42,6 +42,11 @@ html, body {
     padding: 0px;
     border: 0px;
     overflow: hidden;
+    font-family: Monospace;
+}
+a:link, a:visited, a:hover, a:active {
+  color: white;
+  text-decoration: none;
 }
 #background {
     position: absolute;
@@ -95,7 +100,7 @@ textarea:focus {
     outline: 0; /* this removes browser-side outline */
 }
 
-button, select {
+button, select, .buttonstyle {
     padding: 8px 12px 8px 12px;
     border: none;
     border-radius: 5px;
@@ -108,7 +113,7 @@ button, select {
     font-weight: bold;
     cursor: pointer;
 }
-button:hover, select:hover {
+button:hover, select:hover, .buttonstyle:select {
     opacity: 1;
 }
 option {
@@ -164,6 +169,11 @@ function main() {
     g_visualizer.render();
     updateTimeDisplay();
   }
+
+  helpElem = document.createElement('a');
+  helpElem.href = "https://github.com/greggman/html5bytebeat";
+  helpElem.innerHTML = "?";
+  controls.appendChild(helpElem);
 
   timeElem = document.createElement('button');
   controls.appendChild(timeElem);
