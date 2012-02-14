@@ -663,7 +663,7 @@ ByteBeat.prototype.setType = function(floatBeat) {
 ByteBeat.prototype.getType = function() {
   return this.floatBeat;
 };
-var zz;
+
 ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var time = this.convertToDesiredSampleRate(this.time);
   var lastSample = this.convertToDesiredSampleRate(dataLength) + 2;

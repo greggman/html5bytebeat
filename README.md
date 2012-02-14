@@ -27,6 +27,10 @@ Here are a few sample songs
 * http://goo.gl/ObMwR
 * http://goo.gl/Arptn
 * http://goo.gl/pD3lx
+* http://goo.gl/MuQWe
+* http://goo.gl/rFNPL
+* http://goo.gl/lQyDd
+* http://goo.gl/6Uz0d
 
 For more info on Bytebeat check out <http://canonical.org/~kragen/bytebeat/>
 
