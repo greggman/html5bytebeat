@@ -202,7 +202,8 @@ function main() {
   }, false);
   controls.appendChild(type);
 
-  expressionTypeElem = addSelection(["infix", "postfix"], 0);
+  //expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch"], 0);
+  expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
     compile(g_byteBeat.getExpression());
@@ -474,9 +475,51 @@ function isOperator(token) {
   return !(token == 't' || (token.charAt(0) >= '0' && token.charAt(0) <= '9'));
 }
 
+var g_glitchToPostfix = {
+    'a': 't',
+    'c': 'drop',
+
+    'd': '*',
+    'e': '/',
+    'f': '+',
+    'g': '-',
+    'h': '%',
+
+    'j': '<<',
+    'k': '>>',
+    'l': '&',
+    'm': '|',
+    'n': '^',
+    'o': '~',
+
+    'p': 'dup',
+    'q': 'pick',
+    'r': 'swap',
+
+    's': '<',
+    't': '>',
+    'u': '=',
+    '/': '//',
+};
+
 ByteBeat.prototype.setExpression = function(x) {
   var orig = x;
-  if (this.expressionType) {
+  var expressionType = this.expressionType
+  if (expressionType == 2) { // glitch
+    try {
+      // Convert to postfix
+      var postfix = [];
+      for (var i = 0; i < x.length; ++i) {
+        var c = x[i];
+        postfix.push(g_glitchToPostfix[c] || c);
+      }
+      x = postfix.join(" ");
+      expressionType = 1;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+  if (expressionType == 1) {  // postfix
     try {
       // remove comments (hacky)
       x = x.replace(/\/\*.*?\*\//g, "");
@@ -489,6 +532,24 @@ ByteBeat.prototype.setExpression = function(x) {
         var token = tokens[i];
         if (isOperator(token)) {
           switch (token.toLowerCase()) {
+          case '>':
+            var v1 = stack.pop();
+            var v2 = stack.pop();
+            stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
+            break;
+          case '<':
+            var v1 = stack.pop();
+            var v2 = stack.pop();
+            stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
+            break;
+          case '=':
+            var v1 = stack.pop();
+            var v2 = stack.pop();
+            stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
+            break;
+          case 'drop':
+            stack.pop();
+            break;
           case 'dup':
             var a0 = stack.pop();
             stack.push(a0);
@@ -552,8 +613,8 @@ ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
   return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
 };
 
-ByteBeat.prototype.setExpressionType = function(postfix) {
-  this.expressionType = postfix;
+ByteBeat.prototype.setExpressionType = function(type) {
+  this.expressionType = type;
 };
 
 ByteBeat.prototype.getExpressionType = function() {
