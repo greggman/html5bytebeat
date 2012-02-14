@@ -210,6 +210,14 @@ function main() {
   }, false);
   controls.appendChild(expressionTypeElem);
 
+  var sampleRates = [8000, 11025, 22050, 33075, 44100];
+  sampleRateElem = addSelection(["8kHz", "11kHz", "22kHz", "32kHz", "44kHz"], 0);
+  sampleRateElem.addEventListener('change', function(event) {
+    g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
+    compile(g_byteBeat.getExpression());
+  }, false);
+  controls.appendChild(sampleRateElem);
+
   visualTypeElem = addSelection(["none", "wave"], 1);
   visualTypeElem.addEventListener('change', function(event) {
     g_visualizer.setType(event.target.selectedIndex);
@@ -259,7 +267,7 @@ function main() {
     var hash = window.location.hash.substr(1);
     readURL(hash);
   } else {
-    readURL('t=0&e=0&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
+    readURL('t=0&e=0&s=8000&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
   }
 
   onWindowResize();
@@ -289,10 +297,19 @@ function main() {
     }
     var t = data.t !== undefined ? data.t : 1
     var e = data.e !== undefined ? data.e : 0;
+    var s = data.s !== undefined ? data.s : 8000;
+
+    for (var i = 0; i < sampleRates; ++i) {
+      if (s == sampleRates[i]) {
+        setSelectOption(sampleRateElem, i);
+        break;
+      }
+    }
     setSelectOption(type, t);
     setSelectOption(expressionTypeElem, e);
     g_byteBeat.setType(parseInt(t));
     g_byteBeat.setExpressionType(parseInt(e));
+    g_byteBeat.setDesiredSampleRate(parseInt(s));
     var bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
       codeElem.value = text;
@@ -366,6 +383,7 @@ function setURL() {
     window.location.replace(
       '#t=' + g_byteBeat.getType() +
       '&e=' + g_byteBeat.getExpressionType() +
+      '&s=' + g_byteBeat.getDesiredSampleRate() +
       '&bb=' + hex);
   },
   dummyFunction);
@@ -611,6 +629,14 @@ ByteBeat.prototype.setExpression = function(x) {
 
 ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
   return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+};
+
+ByteBeat.prototype.setDesiredSampleRate = function(rate) {
+  this.desiredSampleRate = rate;
+};
+
+ByteBeat.prototype.getDesiredSampleRate = function() {
+  return this.desiredSampleRate;
 };
 
 ByteBeat.prototype.setExpressionType = function(type) {
