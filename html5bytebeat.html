@@ -390,22 +390,24 @@ function setURL() {
 
 ByteBeat = function() {
   var that = this;
-  this.buffer = new Float32Array(4096);
+  this.buffer0 = new Float32Array(4096);
+  this.buffer1 = new Float32Array(4096);
   this.desiredSampleRate = 8000;
   this.time = 0;
   this.backTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
-  this.fn = function(t) {
+  this.functions = [function(t) {
     return Math.sin(t) * 0.1;
-  };
+  }];
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
     this.node = this.context.createJavaScriptNode(4096, 2, 2);
     this.actualSampleRate = this.context.sampleRate;
     this.node.onaudioprocess = function(e) {
-      that.process(e.outputBuffer.getChannelData(0),
+      var data = e.outputBuffer.getChannelData(0);
+      that.process(data.length, data,
                    e.outputBuffer.getChannelData(1));
     };
     this.good = true;
@@ -420,10 +422,11 @@ ByteBeat = function() {
     function AudioDataDestination(sampleRate, readFn) {
       // Initialize the audio output.
       var audio = new Audio();
-      audio.mozSetup(1, sampleRate);
+      var channels = 2
+      audio.mozSetup(channels, sampleRate);
 
       var currentWritePosition = 0;
-      var prebufferSize = sampleRate / 2; // buffer 500ms
+      var prebufferSize = sampleRate * channels / 2; // buffer 500ms
       var tail = null, tailPosition;
 
       // The function called with regular interval to populate
@@ -465,7 +468,7 @@ ByteBeat = function() {
     this.actualSampleRate = 44100;//this.desiredSampleRate;
     var audioDestination = new AudioDataDestination(this.actualSampleRate, function(buffer) {
       if (playing) {
-        that.process(buffer);
+        that.process(buffer.length >> 1, buffer);
       }
     });
   }
@@ -521,9 +524,10 @@ var g_glitchToPostfix = {
 
 ByteBeat.prototype.setExpression = function(x) {
   var orig = x;
-  var expressionType = this.expressionType
-  if (expressionType == 2) { // glitch
-    try {
+
+  function compileExpression(x) {
+    var expressionType = this.expressionType
+    if (expressionType == 2) { // glitch
       // Convert to postfix
       var postfix = [];
       for (var i = 0; i < x.length; ++i) {
@@ -532,12 +536,8 @@ ByteBeat.prototype.setExpression = function(x) {
       }
       x = postfix.join(" ");
       expressionType = 1;
-    } catch (e) {
-      return e.toString();
     }
-  }
-  if (expressionType == 1) {  // postfix
-    try {
+    if (expressionType == 1) {  // postfix
       // remove comments (hacky)
       x = x.replace(/\/\*.*?\*\//g, "");
       x = x.replace(/\/\/.*?\n/g, " ");
@@ -592,12 +592,8 @@ ByteBeat.prototype.setExpression = function(x) {
         }
       }
       x = stack.pop();
-    } catch (e) {
-      return e.toString();
     }
-  }
 
-  try {
     // remove comments (hacky)
     x = x.replace(/\/\*.*?\*\//g, "");
     x = x.replace(/\/\/.*?\n/g, " ");
@@ -610,22 +606,28 @@ ByteBeat.prototype.setExpression = function(x) {
     x = x.replace(/(Math\.)?int/g, "Math.floor");
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
-  } catch (e) {
-    return e.toString();
-  }
 
-  try {
     for (var i = 0; i < 1000; i += 100) {
       var s = f(i);
       if (typeof s != "number") {
-        return "NaN";
+        throw "NaN";
       }
+    }
+
+    return f;
+  }
+
+  var expressions = x.split("//:channel2");
+  var funcs = [];
+  try {
+    for (var i = 0; i < expressions.length; ++i) {
+      funcs.push(compileExpression(expressions[i]));
     }
   } catch (e) {
     return e.toString();
   }
 
-  this.fn = f;
+  this.functions = funcs;
   this.expression = orig;
   return null;
 };
@@ -661,39 +663,60 @@ ByteBeat.prototype.setType = function(floatBeat) {
 ByteBeat.prototype.getType = function() {
   return this.floatBeat;
 };
-
-ByteBeat.prototype.process = function(leftData, rightData) {
-  var dataLength = leftData.length;
+var zz;
+ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var time = this.convertToDesiredSampleRate(this.time);
   var lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
-  if (this.buffer.length < lastSample) {
-    this.buffer = new Float32Array(lastSample);
+  if (this.buffer0.length < lastSample) {
+    this.buffer0 = new Float32Array(lastSample);
+    this.buffer1 = new Float32Array(lastSample);
   }
-  var buffer = this.buffer;
-  var fn = this.fn;
-  if (this.floatBeat) {
-    for (var i = 0; i < lastSample; ++i) {
-      buffer[i] = fn(time++);
+  var buffer0 = this.buffer0;
+  var buffer1;
+  //
+  var fn0 = this.functions[0];
+  var fn1 = this.functions[1];
+  if (fn1) {
+    buffer1 = this.buffer1;
+    if (this.floatBeat) {
+      for (var i = 0; i < lastSample; ++i) {
+        buffer0[i] = fn0(time  );
+        buffer1[i] = fn1(time++);
+      }
+    } else {
+      for (var i = 0; i < lastSample; ++i) {
+        buffer0[i] = (fn0(time  ) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++) & 255) / 127 - 1;
+      }
     }
   } else {
-    for (var i = 0; i < lastSample; ++i) {
-      buffer[i] = (fn(time++) & 255) / 127 - 1;
+    buffer1 = this.buffer0;
+    if (this.floatBeat) {
+      for (var i = 0; i < lastSample; ++i) {
+        buffer0[i] = fn0(time++);
+      }
+    } else {
+      for (var i = 0; i < lastSample; ++i) {
+        buffer0[i] = (fn0(time++) & 255) / 127 - 1;
+      }
     }
   }
   if (rightData) {
     for (var i = 0; i < dataLength; ++i) {
-      var s = buffer[this.convertToDesiredSampleRate(i)];
-      leftData[i] = s;
-      rightData[i] = s;
+      var ndx = this.convertToDesiredSampleRate(i);
+      leftData[i] = buffer0[ndx];
+      rightData[i] = buffer1[ndx];
     }
   } else {
     for (var i = 0; i < dataLength; ++i) {
-      leftData[i] = buffer[this.convertToDesiredSampleRate(i)];
+      var ndx = this.convertToDesiredSampleRate(i);
+      leftData[i * 2] = buffer0[ndx];
+      leftData[i * 2 + 1] = buffer1[ndx];
     }
   }
 
   if (this.visualizer) {
-    this.visualizer.update(buffer, lastSample - 1);
+    this.visualizer.update(buffer0, lastSample - 1);
   }
 
   this.time += dataLength;
@@ -832,7 +855,7 @@ WebGLVisualizer.prototype.render = function() {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  this.backPixel[0] = g_byteBeat.fn(g_byteBeat.backTime++) * 127 + 127;
+  this.backPixel[0] = g_byteBeat.functions[0](g_byteBeat.backTime++) * 127 + 127;
   gl.texSubImage2D(gl.TEXTURE_2D, 0, this.backPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.backPixel);
   this.backPos = this.backPos % this.backWidth;
 
