@@ -195,12 +195,12 @@ function main() {
     return select;
   }
 
-  type = addSelection(["bytebeat", "floatbeat"], 0);
-  type.addEventListener('change', function(event) {
+  beatTypeElem = addSelection(["bytebeat", "floatbeat"], 0);
+  beatTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setType(event.target.selectedIndex);
     setURL();
   }, false);
-  controls.appendChild(type);
+  controls.appendChild(beatTypeElem);
 
   //expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch"], 0);
   expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
@@ -305,7 +305,7 @@ function main() {
         break;
       }
     }
-    setSelectOption(type, t);
+    setSelectOption(beatTypeElem, t);
     setSelectOption(expressionTypeElem, e);
     g_byteBeat.setType(parseInt(t));
     g_byteBeat.setExpressionType(parseInt(e));
