@@ -34,7 +34,11 @@
 <meta charset="utf-8">
 <title>HTML5 Bytebeat - Redirect</title>
 <script>
-window.location = "http://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html" + window.location.hash;
+window.onload = main;
+function main() {
+  window.location = "http://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html" + window.location.hash;
+}
+main();
 </script>
 </head>
 <body>
