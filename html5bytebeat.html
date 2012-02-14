@@ -598,6 +598,10 @@ ByteBeat.prototype.setExpression = function(x) {
   }
 
   try {
+    // remove comments (hacky)
+    x = x.replace(/\/\*.*?\*\//g, "");
+    x = x.replace(/\/\/.*?\n/g, " ");
+    // Translate a few things.
     x = x.replace(/(Math\.)?sin/g, "Math.sin");
     x = x.replace(/(Math\.)?cos/g, "Math.cos");
     x = x.replace(/(Math\.)?tan/g, "Math.tan");
