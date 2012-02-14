@@ -374,13 +374,13 @@ function setURL() {
 ByteBeat = function() {
   var that = this;
   this.buffer = new Float32Array(4096);
-  this.desiredSampleRate = 3; //8000;
+  this.desiredSampleRate = 8000;
   this.time = 0;
   this.backTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
   this.fn = function(t) {
-    return Math.sin(t * Math.PI / 4); //0;
+    return Math.sin(t) * 0.1;
   };
 
   if (window.webkitAudioContext) {
@@ -452,7 +452,6 @@ ByteBeat = function() {
       }
     });
   }
-  this.actualSampleRate = 17;
 };
 
 function strip(s) {
@@ -575,7 +574,7 @@ var ff;
 ByteBeat.prototype.process = function(leftData, rightData) {
   var dataLength = leftData.length;
   var time = this.convertToDesiredSampleRate(this.time);
-  var lastSample = this.convertToDesiredSampleRate(dataLength) + 1;
+  var lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
   if (this.buffer.length < lastSample) {
     this.buffer = new Float32Array(lastSample);
   }
@@ -603,9 +602,13 @@ if (gg > 0) {
   }
   if (rightData) {
     for (var i = 0; i < dataLength; ++i) {
-      var s = buffer[this.convertToDesiredSampleRate(i)];
+      var ndx = this.convertToDesiredSampleRate(i);
+      var s = buffer[ndx];
       leftData[i] = s;
       rightData[i] = s;
+      if (ndx >= lastSample) {
+        log("ndx out of range: " + ndx + " ls: " + lastSample);
+      }
       if (gg > 0) {
 //        log("cpy " + i + ": " + s.toFixed(3));
       }
@@ -616,7 +619,7 @@ if (gg > 0) {
     }
   }
 
-  v.update(buffer, lastSample);
+  v.update(buffer, lastSample - 1);
 
   this.time += dataLength;
   --gg;
@@ -709,7 +712,6 @@ WebGLVisualizer.prototype.setType = function(type) {
   this.type = type;
 };
 
-var lastUp = 0;
 WebGLVisualizer.prototype.update = function(buffer, length) {
   if (!this.type) {
     return;
@@ -720,15 +722,12 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
-    var lastNdx = (max + this.position) % this.width;
-    var last = dest[lastNdx * 2 + 1];
     for (i = 0; i < max; ++i) {
       var h1 = buffer[offset++];
       var h2 = buffer[offset];
       dest[d++] = h1;
-      dest[d++] = h2 + ((h1 == h2) ? (1 / 256) : 0);
+      dest[d++] = h2 + 3 / 256;
     }
-    dest[d - 1] = last;
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
     this.waveModel.buffers.height.setRange(view, this.position * 4 * 2);
     this.position = (this.position + max) % this.width;
