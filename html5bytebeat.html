@@ -159,6 +159,9 @@ function main() {
     alert("This page needs a browser the supports the Web Audio API or the Audio Data API: Chrome, Chromium, Firefox, or WebKit");
   }
 
+  b.setExpressionType(1);
+  b.setExpression("Math.sin(t)");
+
   timeDisplay = document.createElement('button');
   controls.appendChild(timeDisplay);
   timeDisplay.addEventListener('click', function() {
@@ -368,17 +371,16 @@ function setURL() {
   dummyFunction);
 }
 
-var foo;
 ByteBeat = function() {
   var that = this;
   this.buffer = new Float32Array(4096);
-  this.desiredSampleRate = 8000;
+  this.desiredSampleRate = 3; //8000;
   this.time = 0;
   this.backTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
-  this.fn = function() {
-    return 0;
+  this.fn = function(t) {
+    return Math.sin(t * Math.PI / 4); //0;
   };
 
   if (window.webkitAudioContext) {
@@ -450,6 +452,7 @@ ByteBeat = function() {
       }
     });
   }
+  this.actualSampleRate = 17;
 };
 
 function strip(s) {
@@ -567,6 +570,8 @@ ByteBeat.prototype.getType = function() {
   return this.floatBeat;
 };
 
+var gg = 1;
+var ff;
 ByteBeat.prototype.process = function(leftData, rightData) {
   var dataLength = leftData.length;
   var time = this.convertToDesiredSampleRate(this.time);
@@ -576,9 +581,20 @@ ByteBeat.prototype.process = function(leftData, rightData) {
   }
   var buffer = this.buffer;
   var fn = this.fn;
+if (gg > 0) {
+  log("bb-process");
+  log("ls: " + lastSample);
+  log("dl: " + dataLength);
+}
   if (this.floatBeat) {
     for (var i = 0; i < lastSample; ++i) {
-      buffer[i] = fn(time++);
+      //buffer[i] = fn(time++);
+      var vv = fn(time++);
+      buffer[i] = vv;
+      if (gg > 0) {
+        ff = fn;
+//        log("gen " + i + " t: " + time + " : " + vv.toFixed(3));
+      }
     }
   } else {
     for (var i = 0; i < lastSample; ++i) {
@@ -586,13 +602,13 @@ ByteBeat.prototype.process = function(leftData, rightData) {
     }
   }
   if (rightData) {
-    if (rightData.length != dataLength) {
-      throw("leftData.length != rightData.length");
-    }
     for (var i = 0; i < dataLength; ++i) {
       var s = buffer[this.convertToDesiredSampleRate(i)];
       leftData[i] = s;
       rightData[i] = s;
+      if (gg > 0) {
+//        log("cpy " + i + ": " + s.toFixed(3));
+      }
     }
   } else {
     for (var i = 0; i < dataLength; ++i) {
@@ -603,6 +619,7 @@ ByteBeat.prototype.process = function(leftData, rightData) {
   v.update(buffer, lastSample);
 
   this.time += dataLength;
+  --gg;
 };
 
 ByteBeat.prototype.play = function() {
@@ -692,6 +709,7 @@ WebGLVisualizer.prototype.setType = function(type) {
   this.type = type;
 };
 
+var lastUp = 0;
 WebGLVisualizer.prototype.update = function(buffer, length) {
   if (!this.type) {
     return;
@@ -702,15 +720,15 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
+    var lastNdx = (max + this.position) % this.width;
+    var last = dest[lastNdx * 2 + 1];
     for (i = 0; i < max; ++i) {
       var h1 = buffer[offset++];
       var h2 = buffer[offset];
       dest[d++] = h1;
       dest[d++] = h2 + ((h1 == h2) ? (1 / 256) : 0);
     }
-    if (d == this.width * 2) {
-      dest[d - 1] = dest[0];
-    }
+    dest[d - 1] = last;
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
     this.waveModel.buffers.height.setRange(view, this.position * 4 * 2);
     this.position = (this.position + max) % this.width;
