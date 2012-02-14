@@ -158,14 +158,23 @@ function main() {
     alert("This page needs a browser the supports the Web Audio API or the Audio Data API: Chrome, Chromium, Firefox, or WebKit");
   }
 
-  timeElem = document.createElement('button');
-  controls.appendChild(timeElem);
-  timeElem.addEventListener('click', function() {
+  function resetToZero() {
     g_byteBeat.reset();
     g_visualizer.reset();
     g_visualizer.render();
     updateTimeDisplay();
-  }, false);
+  }
+
+  timeElem = document.createElement('button');
+  controls.appendChild(timeElem);
+  timeElem.addEventListener('click', resetToZero);
+
+  // WebKit has a bug: https://bugs.webkit.org/show_bug.cgi?id=78632
+  // You can't click the timeElem while it's changing so add a reset button
+  zeroElem = document.createElement('button');
+  controls.appendChild(zeroElem);
+  zeroElem.addEventListener('click', resetToZero);
+  zeroElem.textContent = "0";
 
   function playPause() {
     playing = !playing;
