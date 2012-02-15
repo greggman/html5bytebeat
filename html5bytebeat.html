@@ -347,7 +347,7 @@ function updateTimeDisplay() {
 };
 
 // Splits a string, looking for //:name
-var g_splitRE = new RegExp(/\/\/\:([a-zA-Z0-9_-]+)/);
+var g_splitRE = new RegExp(/\/\/\:([a-zA-Z0-9_-]+)(.*)/);
 function splitBySections(str) {
   var sections = {};
 
@@ -803,15 +803,20 @@ ByteBeat.prototype.pause = function() {
 WebGLVisualizer = function() {
   this.type = 1;
   this.temp = new Float32Array(1);
+  this.resolution = new Float32Array(2);
   this.effects = {
     wave: {
       uniforms: {
-        position: 0
+        position: 0,
+        time: 0,
+        resolution: this.resolution
       }
     },
     data: {
       uniforms: {
-        offset: 0
+        offset: 0,
+        time: 0,
+        resolution: this.resolution
       }
     }
   };
@@ -894,9 +899,12 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   this.width = width;
   this.height = height;
   this.position = 0;
+  this.then = (new Date()).getTime() * 0.001;
+
 };
 
 WebGLVisualizer.prototype.reset = function() {
+  this.then = (new Date()).getTime() * 0.001;
   for (var i = 0; i < this.height.numElements; ++i) {
     this.height.setElement(i, [0]);
   }
@@ -991,15 +999,22 @@ WebGLVisualizer.prototype.render = function() {
   var wave = this.effects.wave;
   var data = this.effects.data;
 
+  this.resolution[0] = canvas.width;
+  this.resolution[1] = canvas.height;
+
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   this.dataPixel[0] = g_byteBeat.functions[0](g_byteBeat.dataTime++) * 127 + 127;
   gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
   this.dataPos = this.dataPos % this.dataWidth;
+  var now = (new Date()).getTime() * 0.001;
 
   data.uniforms.offset = this.dataPos / this.dataWidth;
+  data.uniforms.time = now - this.then;
   data.model.drawPrep(data.uniforms);
   data.model.draw();
+
   wave.uniforms.position = this.position / this.width;
+  wave.uniforms.time = now - this.then;
   wave.model.drawPrep(wave.uniforms);
   wave.model.draw();
 };
