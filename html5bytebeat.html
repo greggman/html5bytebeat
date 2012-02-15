@@ -180,13 +180,6 @@ function main() {
   controls.appendChild(timeElem);
   timeElem.addEventListener('click', resetToZero);
 
-  // WebKit has a bug: https://bugs.webkit.org/show_bug.cgi?id=78632
-  // You can't click the timeElem while it's changing so add a reset button
-  zeroElem = document.createElement('button');
-  controls.appendChild(zeroElem);
-  zeroElem.addEventListener('click', resetToZero);
-  zeroElem.textContent = "0";
-
   function playPause() {
     playing = !playing;
     if (playing) {
@@ -349,7 +342,7 @@ function main() {
 function dummyFunction() {};
 
 function updateTimeDisplay() {
-  timeElem.textContent = g_byteBeat.getTime();
+  timeElem.innerHTML = g_byteBeat.getTime();
 };
 
 // Splits a string, looking for //:name
