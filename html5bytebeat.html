@@ -377,7 +377,8 @@ function compile(text) {
     }
     g_byteBeat.setExpressions(expressions);
   }
-  g_visualizer.setEffects(sections);
+  // comment in to allow GLSL editing
+  //g_visualizer.setEffects(sections);
 }
 
 function handleCompileError(error) {
