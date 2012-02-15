@@ -900,7 +900,7 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   this.height = height;
   this.position = 0;
   this.then = (new Date()).getTime() * 0.001;
-
+  this.compiling = false;
 };
 
 WebGLVisualizer.prototype.reset = function() {
@@ -936,32 +936,73 @@ WebGLVisualizer.prototype.setShaderGLSL = function(effect, vertexShaderSource, f
     fragmentShaderSource = effect[gl.FRAGMENT_SHADER].defaultSource;
   }
 
-  if (vertexShaderSource == effect[gl.VERTEX_SHADER].source &&
-      fragmentShaderSource == effect[gl.FRAGMENT_SHADER].source) {
-    log("no shader change");
+  effect[gl.VERTEX_SHADER].pending = vertexShaderSource;
+  effect[gl.FRAGMENT_SHADER].pending = fragmentShaderSource;
+}
+
+WebGLVisualizer.prototype.compileIfPending = function() {
+  if (this.compiling) {
     return;
   }
 
-  var program = tdl.programs.loadProgram(vertexShaderSource, fragmentShaderSource);
-  if (!program) {
+  if (this.compileShaderIfPending(this.effects.wave)) {
+    return;
+  }
+
+  if (this.compileShaderIfPending(this.effects.data)) {
+    return;
+  }
+};
+
+WebGLVisualizer.prototype.compileShaderIfPending = function(effect) {
+  var pendingVertexShader = effect[gl.VERTEX_SHADER].pending;
+  var pendingFragmentShader = effect[gl.FRAGMENT_SHADER].pending;
+
+  // If there was nothing pending exit
+  if (pendingVertexShader === undefined && pendingFragmentShader === undefined) {
+    return false;
+  }
+
+  // clear pending
+  effect[gl.VERTEX_SHADER].pending = undefined;
+  effect[gl.FRAGMENT_SHADER].pending = undefined;
+
+  // If there was no change exit.
+  if (pendingVertexShader == effect[gl.VERTEX_SHADER].source &&
+      pendingFragmentShader == effect[gl.FRAGMENT_SHADER].source) {
+    //this.onCompileCallback(null);
+    return false;
+  }
+
+  this.compiling = true;
+  var that = this;
+  this.programBeingCompiled = tdl.programs.loadProgram(pendingVertexShader, pendingFragmentShader, function(error) {
+    that.handleCompile(error, effect, pendingVertexShader, pendingFragmentShader);
+  });
+  return true;
+};
+
+WebGLVisualizer.prototype.handleCompile = function(error, effect, vertexShaderSource, fragmentShaderSource) {
+  this.compiling = false;
+  if (error !== undefined) {
     if (this.onCompileCallback) {
       this.onCompileCallback(tdl.programs.lastError);
-      return;
+    }
+  } else {
+    effect.model.setProgram(this.programBeingCompiled);
+    effect[gl.VERTEX_SHADER].source = vertexShaderSource;
+    effect[gl.FRAGMENT_SHADER].source = fragmentShaderSource;
+    if (this.onCompileCallback) {
+      this.onCompileCallback(null);
     }
   }
-
-  effect.model.setProgram(program);
-  effect[gl.VERTEX_SHADER].source = vertexShaderSource;
-  effect[gl.FRAGMENT_SHADER].source = fragmentShaderSource;
-
-  if (this.onCompileCallback) {
-    this.onCompileCallback(null);
-  }
+  this.compileIfPending();
 };
 
 WebGLVisualizer.prototype.setEffects = function(sections) {
   this.setShaderGLSL(this.effects.wave, sections['glsl-wave-vs'], sections['glsl-wave-fs']);
   this.setShaderGLSL(this.effects.data, this.effects.data[gl.VERTEX_SHADER].defaultSource, sections['glsl-data-fs']);
+  this.compileIfPending();
 };
 
 WebGLVisualizer.prototype.update = function(buffer, length) {

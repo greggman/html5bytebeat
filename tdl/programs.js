@@ -70,26 +70,37 @@ tdl.programs.loadProgramFromScriptTags = function(
       document.getElementById(fragmentShaderId).text);
 };
 
+tdl.programs.makeProgramId = function(vertexShader, fragmentShader) {
+  return vertexShader + fragmentShader;
+};
+
 /**
  * Loads a program.
  * @param {string} vertexShader The vertex shader source.
  * @param {string} fragmentShader The fragment shader source.
+ * @param {!function(error)) opt_asyncCallback. Called with
+ *        undefined if success or string if failure.
  * @return {tdl.programs.Program} The created program.
  */
-tdl.programs.loadProgram = function(vertexShader, fragmentShader) {
-  var id = vertexShader + fragmentShader;
+tdl.programs.loadProgram = function(vertexShader, fragmentShader, opt_asyncCallback) {
+  var id = tdl.programs.makeProgramId(vertexShader, fragmentShader);
   tdl.programs.init_();
   var program = gl.tdl.programs.programDB[id];
   if (program) {
+    if (opt_asyncCallback) {
+      setTimeout(function() { opt_asyncCallback(); }, 1);
+    }
     return program;
   }
   try {
-    program = new tdl.programs.Program(vertexShader, fragmentShader);
+    program = new tdl.programs.Program(vertexShader, fragmentShader, opt_asyncCallback);
   } catch (e) {
     tdl.error(e);
     return null;
   }
-  gl.tdl.programs.programDB[id] = program;
+  if (!opt_asyncCallback) {
+    gl.tdl.programs.programDB[id] = program;
+  }
   return program;
 };
 
@@ -98,9 +109,19 @@ tdl.programs.loadProgram = function(vertexShader, fragmentShader) {
  * @constructor
  * @param {string} vertexShader The vertex shader source.
  * @param {string} fragmentShader The fragment shader source.
+ * @param {!function(error)) opt_asyncCallback. Called with
+ *        undefined if success or string if failure.
  */
-tdl.programs.Program = function(vertexShader, fragmentShader) {
+tdl.programs.Program = function(vertexShader, fragmentShader, opt_asyncCallback) {
   var that = this;
+  this.programId = tdl.programs.makeProgramId(vertexShader, fragmentShader);
+  this.asyncCallback = opt_asyncCallback;
+
+  var shaderId;
+  var program;
+  var vs;
+  var fs;
+
   /**
    * Loads a shader.
    * @param {!WebGLContext} gl The WebGLContext to use.
@@ -109,9 +130,9 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
    * @return {!WebGLShader} The created shader.
    */
   var loadShader = function(gl, shaderSource, shaderType) {
-    var id = shaderSource + shaderType;
+    shaderId = shaderSource + shaderType;
     tdl.programs.init_();
-    var shader = gl.tdl.programs.shaderDB[id];
+    var shader = gl.tdl.programs.shaderDB[shaderId];
     if (shader) {
       return shader;
     }
@@ -126,6 +147,13 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
     gl.compileShader(shader);
 
     // Check the compile status
+    if (!that.asyncCallback) {
+      checkShader(shader);
+    }
+    return shader;
+  }
+
+  var checkShader = function(shader) {
     var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
     if (!compiled && !gl.isContextLost()) {
       // Something went wrong during compilation; get the error
@@ -133,10 +161,8 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
       gl.deleteShader(shader);
       throw("*** Error compiling shader :" + tdl.programs.lastError);
     }
-
-    gl.tdl.programs.shaderDB[id] = shader;
-    return shader;
-  }
+    gl.tdl.programs.shaderDB[shaderId] = shader;
+  };
 
   /**
    * Loads shaders from script tags, creates a program, attaches the shaders and
@@ -147,9 +173,6 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
    * @return {!WebGLProgram} The created program.
    */
   var loadProgram = function(gl, vertexShader, fragmentShader) {
-    var program;
-    var vs;
-    var fs;
     var e;
     try {
       vs = loadShader(gl, vertexShader, gl.VERTEX_SHADER);
@@ -159,14 +182,17 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
       gl.attachShader(program, fs);
       linkProgram(gl, program);
     } catch (e) {
-      if (vs) { gl.deleteShader(vs) }
-      if (fs) { gl.deleteShader(fs) }
-      if (program) { gl.deleteProgram(program) }
-      throw e;
+      deleteAll(e);
     }
     return program;
   };
 
+  var deleteAll = function(e) {
+    if (vs) { gl.deleteShader(vs) }
+    if (fs) { gl.deleteShader(fs) }
+    if (program) { gl.deleteProgram(program) }
+    throw e;
+  };
 
   /**
    * Links a WebGL program, throws if there are errors.
@@ -178,6 +204,12 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
     gl.linkProgram(program);
 
     // Check the link status
+    if (!that.asyncCallback) {
+      checkProgram(program);
+    }
+  };
+
+  var checkProgram = function(program) {
     var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
     if (!linked && !gl.isContextLost()) {
       // something went wrong with the link
@@ -393,6 +425,24 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
   };
 
   this.program = program;
+  this.good = this.asyncCallback ? false : true;
+
+  var checkLater = function() {
+    var e;
+    try {
+      checkShader(vs);
+      checkShader(fs);
+      checkProgram(program);
+    } catch (e) {
+      that.asyncCallback(e.toString());
+      return;
+    }
+    gl.tdl.programs.programDB[that.programId] = this;
+    that.asyncCallback();
+  };
+  if (this.asyncCallback) {
+    setTimeout(checkLater, 1000);
+  }
 };
 
 tdl.programs.handleContextLost_ = function() {
