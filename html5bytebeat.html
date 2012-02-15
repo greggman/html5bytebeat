@@ -173,6 +173,7 @@ function main() {
   helpElem = document.createElement('a');
   helpElem.href = "https://github.com/greggman/html5bytebeat";
   helpElem.innerHTML = "?";
+  helpElem.className = "buttonstyle";
   controls.appendChild(helpElem);
 
   timeElem = document.createElement('button');
@@ -225,7 +226,7 @@ function main() {
   expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
-    compile(g_byteBeat.getExpression());
+    g_byteBeat.recompile();
   }, false);
   controls.appendChild(expressionTypeElem);
 
@@ -233,7 +234,6 @@ function main() {
   sampleRateElem = addSelection(["8kHz", "11kHz", "22kHz", "32kHz", "44kHz"], 0);
   sampleRateElem.addEventListener('change', function(event) {
     g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
-    compile(g_byteBeat.getExpression());
   }, false);
   controls.appendChild(sampleRateElem);
 
@@ -274,13 +274,14 @@ function main() {
           var start = codeElem.selectionStart;
           var end = codeElem.selectionEnd;
 
-          codeElem.value = codeElem.value.substring(0, start) + '\t' + codeElem.value.substring(end, code.value.length);
+          codeElem.value = codeElem.value.substring(0, start) + '\t' + codeElem.value.substring(end, codeElem.value.length);
 
           codeElem.selectionStart = codeElem.selectionEnd = start + 1;
           codeElem.focus();
       }
   }, false);
 
+  g_byteBeat.setOnCompile(handleCompileError);
 
   if (window.location.hash) {
     var hash = window.location.hash.substr(1);
@@ -351,13 +352,45 @@ function updateTimeDisplay() {
   timeElem.textContent = g_byteBeat.getTime();
 };
 
-function compile(byteBeatExpression) {
-  var error = g_byteBeat.setExpression(byteBeatExpression);
+// Splits a string, looking for //:name
+var g_splitRE = new RegExp(/\/\/\:(\w+)/);
+function splitBySections(str) {
+  var sections = {};
+
+  function getNextSection(str) {
+    var pos = str.search(g_splitRE);
+    if (pos < 0) {
+      return str;
+    }
+    var m = str.match(g_splitRE);
+    var sectionName = m[1];
+    newStr = getNextSection(str.substring(pos + 3 + sectionName.length));
+    sections[sectionName] = newStr;
+    return str.substring(0, pos);
+  }
+  str = getNextSection(str);
+  if (str.length) {
+    sections.default = str;
+  }
+  return sections;
+}
+function compile(text) {
+  var sections = splitBySections(text);
+  if (sections.default || sections.channel1) {
+    var expressions = [sections.default || sections.channel1];
+    if (sections.channel2) {
+      expressions.push(sections.channel2);
+    }
+    g_byteBeat.setExpressions(expressions);
+  }
+}
+
+function handleCompileError(error) {
   if (error == null) {
     errorMessageElem.style.display = "none";
     compileStatusElem.textContent = "compiled successfully";
     compileStatusElem.style.color = "#0F0";
-    setURL(byteBeatExpression);
+    setURL();
   } else {
     errorMessageElem.style.display = "";
     errorMessageElem.textContent = error;
@@ -396,7 +429,7 @@ function setURL() {
     dontSet = false;
     return;
   }
-  compressor.compress(g_byteBeat.getExpression(), 1, function(bytes) {
+  compressor.compress(codeElem.value, 1, function(bytes) {
     var hex = convertBytesToHex(bytes);
     window.location.replace(
       '#t=' + g_byteBeat.getType() +
@@ -418,7 +451,8 @@ ByteBeat = function() {
   this.expressionType = 0;
   this.functions = [function(t) {
     return Math.sin(t) * 0.1;
-  }];
+  }]
+  this.expressions = ["Math.sin(t) * 0.1"];
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
@@ -541,9 +575,15 @@ var g_glitchToPostfix = {
     '/': '//',
 };
 
-ByteBeat.prototype.setExpression = function(x) {
-  var orig = x;
+ByteBeat.prototype.setOnCompile = function(callback) {
+  this.onCompileCallback = callback;
+};
 
+ByteBeat.prototype.recompile = function() {
+  this.setExpressions(this.getExpressions());
+};
+
+ByteBeat.prototype.setExpressions = function(expressions) {
   function compileExpression(x, expressionType) {
     if (expressionType == 2) { // glitch
       // Convert to postfix
@@ -636,19 +676,31 @@ ByteBeat.prototype.setExpression = function(x) {
     return f;
   }
 
-  var expressions = x.split("//:channel2");
   var funcs = [];
   try {
     for (var i = 0; i < expressions.length; ++i) {
-      funcs.push(compileExpression(expressions[i], this.expressionType));
+      var exp = expressions[i];
+      if (exp != this.expressions[i]) {
+        funcs.push(compileExpression(exp, this.expressionType));
+      } else {
+        if (this.functions[i]) {
+          funcs.push(this.functions[i]);
+        }
+      }
     }
-  } catch (e) {
-    return e.toString();
+  } catch(e) {
+    if (this.onCompileCallback) {
+      this.onCompileCallback(e.toString());
+    }
+    return;
   }
 
+  // copy the expressions
+  this.expressions = expressions.slice(0);
   this.functions = funcs;
-  this.expression = orig;
-  return null;
+  if (this.onCompileCallback) {
+    this.onCompileCallback(null);
+  }
 };
 
 ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
@@ -667,12 +719,12 @@ ByteBeat.prototype.setExpressionType = function(type) {
   this.expressionType = type;
 };
 
-ByteBeat.prototype.getExpressionType = function() {
-  return this.expressionType;
+ByteBeat.prototype.getExpressions = function() {
+  return this.expressions.slice(0);
 };
 
-ByteBeat.prototype.getExpression = function() {
-  return this.expression;
+ByteBeat.prototype.getExpressionType = function() {
+  return this.expressionType;
 };
 
 ByteBeat.prototype.setType = function(floatBeat) {
