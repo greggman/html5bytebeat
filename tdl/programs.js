@@ -101,8 +101,6 @@ tdl.programs.loadProgram = function(vertexShader, fragmentShader) {
  */
 tdl.programs.Program = function(vertexShader, fragmentShader) {
   var that = this;
-  var vs;
-  var fs;
   /**
    * Loads a shader.
    * @param {!WebGLContext} gl The WebGLContext to use.
@@ -150,6 +148,9 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
    */
   var loadProgram = function(gl, vertexShader, fragmentShader) {
     var program;
+    var vs;
+    var fs;
+    var e;
     try {
       vs = loadShader(gl, vertexShader, gl.VERTEX_SHADER);
       fs = loadShader(gl, fragmentShader, gl.FRAGMENT_SHADER);
@@ -160,8 +161,8 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
     } catch (e) {
       if (vs) { gl.deleteShader(vs) }
       if (fs) { gl.deleteShader(fs) }
-      if (program) { gl.deleteShader(program) }
-      throw(e);
+      if (program) { gl.deleteProgram(program) }
+      throw e;
     }
     return program;
   };
@@ -382,31 +383,15 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
   }
   createSetters(program);
 
-  this.compileShader = function(type, source) {
-    var shader = that.shaders[type];
-    gl.shaderSource(shader, source);
-    if (gl.getError()) {
-      return "GLSL(c): invalid character";
+  this.loadNewShaders = function(vertexShaderSource, fragmentShaderSource) {
+    var program = loadProgram(gl, vertexShaderSource, fragmentShaderSource);
+    if (!program && !gl.isContextLost()) {
+      throw ("could not compile program");
     }
-    gl.compileShader(shader);
-    var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-    return compiled ? null : ("GLSL: " + gl.getShaderInfoLog(shader));
+    that.program = program;
+    createSetters();
   };
 
-  this.linkProgram = function() {
-    var program = that.program;
-    gl.linkProgram(program);
-    var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-    if (!linked) {
-      return "GLSL(l): " + gl.getProgramInfoLog (program);
-    }
-    createSetters(program);
-    return null;
-  };
-
-  this.shaders = [];
-  this.shaders[gl.VERTEX_SHADER] = vs;
-  this.shaders[gl.FRAGMENT_SHADER] = fs;
   this.program = program;
 };
 

@@ -886,7 +886,9 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   this.dataPixel = new Uint8Array(1);
   this.dataTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
+  gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
+      gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
   this.dataBuf = sampleBuf;
 
   this.width = width;
@@ -905,7 +907,9 @@ WebGLVisualizer.prototype.reset = function() {
     this.dataBuf[i] = 0;
   }
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
+  gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
+      gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
 };
 
 WebGLVisualizer.prototype.setType = function(type) {
@@ -916,36 +920,40 @@ WebGLVisualizer.prototype.setOnCompile = function(callback) {
   this.onCompileCallback = callback;
 };
 
-WebGLVisualizer.prototype.setShaderGLSL = function(effect, shaderType, source) {
-  var shaderInfo = effect[shaderType];
-  var source = source || shaderInfo.defaultSource;
-  if (source != shaderInfo.source) {
-    var error = effect.model.program.compileShader(shaderType, source);
-    if (error !== null) {
-      if (this.onCompileCallback) {
-        this.onCompileCallback(error);
-        return;
-      }
-    }
-    var error = effect.model.program.linkProgram();
-    if (error !== null) {
-      if (this.onCompileCallback) {
-        this.onCompileCallback(error);
-        return;
-      }
-    }
-    shaderInfo.source = source;
+WebGLVisualizer.prototype.setShaderGLSL = function(effect, vertexShaderSource, fragmentShaderSource) {
+  if (!vertexShaderSource) {
+    vertexShaderSource = effect[gl.VERTEX_SHADER].defaultSource;
+  }
+  if (!fragmentShaderSource) {
+    fragmentShaderSource = effect[gl.FRAGMENT_SHADER].defaultSource;
+  }
+
+  if (vertexShaderSource == effect[gl.VERTEX_SHADER].source &&
+      fragmentShaderSource == effect[gl.FRAGMENT_SHADER].source) {
+    log("no shader change");
+    return;
+  }
+
+  var program = tdl.programs.loadProgram(vertexShaderSource, fragmentShaderSource);
+  if (!program) {
     if (this.onCompileCallback) {
-      this.onCompileCallback(null);
+      this.onCompileCallback(tdl.programs.lastError);
+      return;
     }
+  }
+
+  effect.model.setProgram(program);
+  effect[gl.VERTEX_SHADER].source = vertexShaderSource;
+  effect[gl.FRAGMENT_SHADER].source = fragmentShaderSource;
+
+  if (this.onCompileCallback) {
+    this.onCompileCallback(null);
   }
 };
 
 WebGLVisualizer.prototype.setEffects = function(sections) {
-  return;
-  this.setShaderGLSL(this.effects.wave, gl.VERTEX_SHADER, sections['glsl-wave-vs']);
-  this.setShaderGLSL(this.effects.wave, gl.FRAGMENT_SHADER, sections['glsl-wave-fs']);
-  this.setShaderGLSL(this.effects.data, gl.FRAGMENT_SHADER, sections['glsl-data-vs']);
+  this.setShaderGLSL(this.effects.wave, sections['glsl-wave-vs'], sections['glsl-wave-fs']);
+  this.setShaderGLSL(this.effects.data, this.effects.data[gl.VERTEX_SHADER].defaultSource, sections['glsl-data-fs']);
 };
 
 WebGLVisualizer.prototype.update = function(buffer, length) {
