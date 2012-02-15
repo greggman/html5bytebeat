@@ -62,7 +62,7 @@ tdl.programs.loadProgramFromScriptTags = function(
   if (!vertElem) {
     throw("Can't find vertex program tag: " + vertexShaderId);
   }
-  if (!fragElem ) {
+  if (!fragElem) {
     throw("Can't find fragment program tag: " + fragmentShaderId);
   }
   return tdl.programs.loadProgram(
@@ -100,6 +100,9 @@ tdl.programs.loadProgram = function(vertexShader, fragmentShader) {
  * @param {string} fragmentShader The fragment shader source.
  */
 tdl.programs.Program = function(vertexShader, fragmentShader) {
+  var that = this;
+  var vs;
+  var fs;
   /**
    * Loads a shader.
    * @param {!WebGLContext} gl The WebGLContext to use.
@@ -146,8 +149,6 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
    * @return {!WebGLProgram} The created program.
    */
   var loadProgram = function(gl, vertexShader, fragmentShader) {
-    var vs;
-    var fs;
     var program;
     try {
       vs = loadShader(gl, vertexShader, gl.VERTEX_SHADER);
@@ -200,184 +201,213 @@ tdl.programs.Program = function(vertexShader, fragmentShader) {
     return flat;
   }
 
-  // Look up attribs.
-  var attribs = {
-  };
-  // Also make a plain table of the locs.
-  var attribLocs = {
-  };
+  function createSetters(program) {
+    // Look up attribs.
+    var attribs = {
+    };
+    // Also make a plain table of the locs.
+    var attribLocs = {
+    };
 
-  function createAttribSetter(info, index) {
-    if (info.size != 1) {
-      throw("arrays of attribs not handled");
+    function createAttribSetter(info, index) {
+      if (info.size != 1) {
+        throw("arrays of attribs not handled");
+      }
+      return function(b) {
+          gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer());
+          gl.enableVertexAttribArray(index);
+          gl.vertexAttribPointer(
+              index, b.numComponents(), b.type(), b.normalize(), b.stride(), b.offset());
+        };
     }
-    return function(b) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, b.buffer());
-        gl.enableVertexAttribArray(index);
-        gl.vertexAttribPointer(
-            index, b.numComponents(), b.type(), b.normalize(), b.stride(), b.offset());
-      };
-  }
 
-  var numAttribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-  for (var ii = 0; ii < numAttribs; ++ii) {
-    var info = gl.getActiveAttrib(program, ii);
-	if (!info) {
-	  break;
-	}
-    var name = info.name;
-    if (tdl.string.endsWith(name, "[0]")) {
-      name = name.substr(0, name.length - 3);
+    var numAttribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+    for (var ii = 0; ii < numAttribs; ++ii) {
+      var info = gl.getActiveAttrib(program, ii);
+    if (!info) {
+      break;
     }
-    var index = gl.getAttribLocation(program, info.name);
-    attribs[name] = createAttribSetter(info, index);
-    attribLocs[name] = index
-  }
+      var name = info.name;
+      if (tdl.string.endsWith(name, "[0]")) {
+        name = name.substr(0, name.length - 3);
+      }
+      var index = gl.getAttribLocation(program, info.name);
+      attribs[name] = createAttribSetter(info, index);
+      attribLocs[name] = index
+    }
 
-  // Look up uniforms
-  var numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-  var uniforms = {
-  };
-  var textureUnit = 0;
+    // Look up uniforms
+    var numUniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+    var uniforms = {
+    };
+    var textureUnit = 0;
 
-  function createUniformSetter(info) {
-    var loc = gl.getUniformLocation(program, info.name);
-    var type = info.type;
-    if (info.size > 1 && tdl.string.endsWith(info.name, "[0]")) {
-      // It's an array.
-      if (type == gl.FLOAT)
-        return function() {
-          var old;
-          return function(v) {
-            if (v !== old) {
-              old = v;
-              gl.uniform1fv(loc, v);
-            }
-          };
-        }();
-      if (type == gl.FLOAT_VEC2)
-        return function() {
-          // I hope they don't use -1,-1 as their first draw
-          var old = new Float32Array([-1, -1]);
-          return function(v) {
-            if (v[0] != old[0] || v[1] != old[1]) {
-              gl.uniform2fv(loc, v);
-            }
-          };
-        }();
-      if (type == gl.FLOAT_VEC3)
-        return function() {
-          // I hope they don't use -1,-1,-1 as their first draw
-          var old = new Float32Array([-1, -1, -1]);
-          return function(v) {
-            if (v[0] != old[0] || v[1] != old[1] || v[2] != old[2]) {
-              gl.uniform3fv(loc, v);
-            }
-          };
-        }();
-      if (type == gl.FLOAT_VEC4)
-        return function(v) { gl.uniform4fv(loc, v); };
-      if (type == gl.INT)
-        return function(v) { gl.uniform1iv(loc, v); };
-      if (type == gl.INT_VEC2)
-        return function(v) { gl.uniform2iv(loc, v); };
-      if (type == gl.INT_VEC3)
-        return function(v) { gl.uniform3iv(loc, v); };
-      if (type == gl.INT_VEC4)
-        return function(v) { gl.uniform4iv(loc, v); };
-      if (type == gl.BOOL)
-        return function(v) { gl.uniform1iv(loc, v); };
-      if (type == gl.BOOL_VEC2)
-        return function(v) { gl.uniform2iv(loc, v); };
-      if (type == gl.BOOL_VEC3)
-        return function(v) { gl.uniform3iv(loc, v); };
-      if (type == gl.BOOL_VEC4)
-        return function(v) { gl.uniform4iv(loc, v); };
-      if (type == gl.FLOAT_MAT2)
-        return function(v) { gl.uniformMatrix2fv(loc, false, v); };
-      if (type == gl.FLOAT_MAT3)
-        return function(v) { gl.uniformMatrix3fv(loc, false, v); };
-      if (type == gl.FLOAT_MAT4)
-        return function(v) { gl.uniformMatrix4fv(loc, false, v); };
-      if (type == gl.SAMPLER_2D || type == gl.SAMPLER_CUBE) {
-        var units = [];
-        for (var ii = 0; ii < info.size; ++ii) {
-          units.push(textureUnit++);
+    function createUniformSetter(info) {
+      var loc = gl.getUniformLocation(program, info.name);
+      var type = info.type;
+      if (info.size > 1 && tdl.string.endsWith(info.name, "[0]")) {
+        // It's an array.
+        if (type == gl.FLOAT)
+          return function() {
+            var old;
+            return function(v) {
+              if (v !== old) {
+                old = v;
+                gl.uniform1fv(loc, v);
+              }
+            };
+          }();
+        if (type == gl.FLOAT_VEC2)
+          return function() {
+            // I hope they don't use -1,-1 as their first draw
+            var old = new Float32Array([-1, -1]);
+            return function(v) {
+              if (v[0] != old[0] || v[1] != old[1]) {
+                gl.uniform2fv(loc, v);
+              }
+            };
+          }();
+        if (type == gl.FLOAT_VEC3)
+          return function() {
+            // I hope they don't use -1,-1,-1 as their first draw
+            var old = new Float32Array([-1, -1, -1]);
+            return function(v) {
+              if (v[0] != old[0] || v[1] != old[1] || v[2] != old[2]) {
+                gl.uniform3fv(loc, v);
+              }
+            };
+          }();
+        if (type == gl.FLOAT_VEC4)
+          return function(v) { gl.uniform4fv(loc, v); };
+        if (type == gl.INT)
+          return function(v) { gl.uniform1iv(loc, v); };
+        if (type == gl.INT_VEC2)
+          return function(v) { gl.uniform2iv(loc, v); };
+        if (type == gl.INT_VEC3)
+          return function(v) { gl.uniform3iv(loc, v); };
+        if (type == gl.INT_VEC4)
+          return function(v) { gl.uniform4iv(loc, v); };
+        if (type == gl.BOOL)
+          return function(v) { gl.uniform1iv(loc, v); };
+        if (type == gl.BOOL_VEC2)
+          return function(v) { gl.uniform2iv(loc, v); };
+        if (type == gl.BOOL_VEC3)
+          return function(v) { gl.uniform3iv(loc, v); };
+        if (type == gl.BOOL_VEC4)
+          return function(v) { gl.uniform4iv(loc, v); };
+        if (type == gl.FLOAT_MAT2)
+          return function(v) { gl.uniformMatrix2fv(loc, false, v); };
+        if (type == gl.FLOAT_MAT3)
+          return function(v) { gl.uniformMatrix3fv(loc, false, v); };
+        if (type == gl.FLOAT_MAT4)
+          return function(v) { gl.uniformMatrix4fv(loc, false, v); };
+        if (type == gl.SAMPLER_2D || type == gl.SAMPLER_CUBE) {
+          var units = [];
+          for (var ii = 0; ii < info.size; ++ii) {
+            units.push(textureUnit++);
+          }
+          return function(units) {
+            return function(v) {
+              gl.uniform1iv(loc, units);
+              v.bindToUnit(units);
+            };
+          }(units);
         }
-        return function(units) {
-          return function(v) {
-            gl.uniform1iv(loc, units);
-            v.bindToUnit(units);
-          };
-        }(units);
+        throw ("unknown type: 0x" + type.toString(16));
+      } else {
+        if (type == gl.FLOAT)
+          return function(v) { gl.uniform1f(loc, v); };
+        if (type == gl.FLOAT_VEC2)
+          return function(v) { gl.uniform2fv(loc, v); };
+        if (type == gl.FLOAT_VEC3)
+          return function(v) { gl.uniform3fv(loc, v); };
+        if (type == gl.FLOAT_VEC4)
+          return function(v) { gl.uniform4fv(loc, v); };
+        if (type == gl.INT)
+          return function(v) { gl.uniform1i(loc, v); };
+        if (type == gl.INT_VEC2)
+          return function(v) { gl.uniform2iv(loc, v); };
+        if (type == gl.INT_VEC3)
+          return function(v) { gl.uniform3iv(loc, v); };
+        if (type == gl.INT_VEC4)
+          return function(v) { gl.uniform4iv(loc, v); };
+        if (type == gl.BOOL)
+          return function(v) { gl.uniform1i(loc, v); };
+        if (type == gl.BOOL_VEC2)
+          return function(v) { gl.uniform2iv(loc, v); };
+        if (type == gl.BOOL_VEC3)
+          return function(v) { gl.uniform3iv(loc, v); };
+        if (type == gl.BOOL_VEC4)
+          return function(v) { gl.uniform4iv(loc, v); };
+        if (type == gl.FLOAT_MAT2)
+          return function(v) { gl.uniformMatrix2fv(loc, false, v); };
+        if (type == gl.FLOAT_MAT3)
+          return function(v) { gl.uniformMatrix3fv(loc, false, v); };
+        if (type == gl.FLOAT_MAT4)
+          return function(v) { gl.uniformMatrix4fv(loc, false, v); };
+        if (type == gl.SAMPLER_2D || type == gl.SAMPLER_CUBE) {
+          return function(unit) {
+            return function(v) {
+              gl.uniform1i(loc, unit);
+              v.bindToUnit(unit);
+            };
+          }(textureUnit++);
+        }
+        throw ("unknown type: 0x" + type.toString(16));
       }
-      throw ("unknown type: 0x" + type.toString(16));
-    } else {
-      if (type == gl.FLOAT)
-        return function(v) { gl.uniform1f(loc, v); };
-      if (type == gl.FLOAT_VEC2)
-        return function(v) { gl.uniform2fv(loc, v); };
-      if (type == gl.FLOAT_VEC3)
-        return function(v) { gl.uniform3fv(loc, v); };
-      if (type == gl.FLOAT_VEC4)
-        return function(v) { gl.uniform4fv(loc, v); };
-      if (type == gl.INT)
-        return function(v) { gl.uniform1i(loc, v); };
-      if (type == gl.INT_VEC2)
-        return function(v) { gl.uniform2iv(loc, v); };
-      if (type == gl.INT_VEC3)
-        return function(v) { gl.uniform3iv(loc, v); };
-      if (type == gl.INT_VEC4)
-        return function(v) { gl.uniform4iv(loc, v); };
-      if (type == gl.BOOL)
-        return function(v) { gl.uniform1i(loc, v); };
-      if (type == gl.BOOL_VEC2)
-        return function(v) { gl.uniform2iv(loc, v); };
-      if (type == gl.BOOL_VEC3)
-        return function(v) { gl.uniform3iv(loc, v); };
-      if (type == gl.BOOL_VEC4)
-        return function(v) { gl.uniform4iv(loc, v); };
-      if (type == gl.FLOAT_MAT2)
-        return function(v) { gl.uniformMatrix2fv(loc, false, v); };
-      if (type == gl.FLOAT_MAT3)
-        return function(v) { gl.uniformMatrix3fv(loc, false, v); };
-      if (type == gl.FLOAT_MAT4)
-        return function(v) { gl.uniformMatrix4fv(loc, false, v); };
-      if (type == gl.SAMPLER_2D || type == gl.SAMPLER_CUBE) {
-        return function(unit) {
-          return function(v) {
-            gl.uniform1i(loc, unit);
-            v.bindToUnit(unit);
-          };
-        }(textureUnit++);
+    }
+
+    var textures = {};
+
+    for (var ii = 0; ii < numUniforms; ++ii) {
+      var info = gl.getActiveUniform(program, ii);
+    if (!info) {
+      break;
+    }
+      name = info.name;
+      if (tdl.string.endsWith(name, "[0]")) {
+        name = name.substr(0, name.length - 3);
       }
-      throw ("unknown type: 0x" + type.toString(16));
+      var setter = createUniformSetter(info);
+      uniforms[name] = setter;
+      if (info.type == gl.SAMPLER_2D || info.type == gl.SAMPLER_CUBE) {
+        textures[name] = setter;
+      }
     }
+
+    that.textures = textures;
+    that.attrib = attribs;
+    that.attribLoc = attribLocs;
+    that.uniform = uniforms;
   }
+  createSetters(program);
 
-  var textures = {};
-
-  for (var ii = 0; ii < numUniforms; ++ii) {
-    var info = gl.getActiveUniform(program, ii);
-	if (!info) {
-	  break;
-	}
-    name = info.name;
-    if (tdl.string.endsWith(name, "[0]")) {
-      name = name.substr(0, name.length - 3);
+  this.compileShader = function(type, source) {
+    var shader = that.shaders[type];
+    gl.shaderSource(shader, source);
+    if (gl.getError()) {
+      return "GLSL(c): invalid character";
     }
-    var setter = createUniformSetter(info);
-    uniforms[name] = setter;
-    if (info.type == gl.SAMPLER_2D || info.type == gl.SAMPLER_CUBE) {
-      textures[name] = setter;
-    }
-  }
+    gl.compileShader(shader);
+    var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    return compiled ? null : ("GLSL: " + gl.getShaderInfoLog(shader));
+  };
 
-  this.textures = textures;
+  this.linkProgram = function() {
+    var program = that.program;
+    gl.linkProgram(program);
+    var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+    if (!linked) {
+      return "GLSL(l): " + gl.getProgramInfoLog (program);
+    }
+    createSetters(program);
+    return null;
+  };
+
+  this.shaders = [];
+  this.shaders[gl.VERTEX_SHADER] = vs;
+  this.shaders[gl.FRAGMENT_SHADER] = fs;
   this.program = program;
-  this.attrib = attribs;
-  this.attribLoc = attribLocs;
-  this.uniform = uniforms;
 };
 
 tdl.programs.handleContextLost_ = function() {

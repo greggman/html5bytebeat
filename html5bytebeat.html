@@ -275,6 +275,7 @@ function main() {
   }, false);
 
   g_byteBeat.setOnCompile(handleCompileError);
+  g_visualizer.setOnCompile(handleCompileError);
 
   if (window.location.hash) {
     var hash = window.location.hash.substr(1);
@@ -346,7 +347,7 @@ function updateTimeDisplay() {
 };
 
 // Splits a string, looking for //:name
-var g_splitRE = new RegExp(/\/\/\:(\w+)/);
+var g_splitRE = new RegExp(/\/\/\:([a-zA-Z0-9_-]+)/);
 function splitBySections(str) {
   var sections = {};
 
@@ -376,6 +377,7 @@ function compile(text) {
     }
     g_byteBeat.setExpressions(expressions);
   }
+  g_visualizer.setEffects(sections);
 }
 
 function handleCompileError(error) {
@@ -439,7 +441,7 @@ ByteBeat = function() {
   this.buffer1 = new Float32Array(4096);
   this.desiredSampleRate = 8000;
   this.time = 0;
-  this.backTime = 0;
+  this.dataTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
   this.functions = [function(t) {
@@ -530,7 +532,7 @@ ByteBeat.prototype.setVisualizer = function(visualizer) {
 
 ByteBeat.prototype.reset = function() {
   this.time = 0;
-  this.backTime = 0;
+  this.dataTime = 0;
 };
 
 ByteBeat.prototype.getTime = function() {
@@ -801,12 +803,32 @@ ByteBeat.prototype.pause = function() {
 WebGLVisualizer = function() {
   this.type = 1;
   this.temp = new Float32Array(1);
-  this.waveUniforms = {
-    position: 0
+  this.effects = {
+    wave: {
+      uniforms: {
+        position: 0
+      }
+    },
+    data: {
+      uniforms: {
+        offset: 0
+      }
+    }
   };
-  this.backgroundUniforms = {
-    offset: 0
+
+  this.effects.wave[gl.VERTEX_SHADER] = {
+    defaultSource: $("waveVertexShader").text
   };
+  this.effects.wave[gl.FRAGMENT_SHADER] = {
+    defaultSource: $("waveFragmentShader").text
+  };
+  this.effects.data[gl.VERTEX_SHADER] = {
+    defaultSource: $("dataVertexShader").text
+  };
+  this.effects.data[gl.FRAGMENT_SHADER] = {
+    defaultSource: $("dataFragmentShader").text
+  };
+
   this.resize(512, 512);
 };
 
@@ -824,16 +846,19 @@ WebGLVisualizer.prototype.resize = function(width, height) {
     height: height,
     column: column
   }
-  if (!this.waveModel) {
-    var program = tdl.programs.loadProgramFromScriptTags(
-        'waveVertexShader',
-        'waveFragmentShader');
-    this.waveModel = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
+  var effects = this.effects;
+  var wave = effects.wave;
+  if (!wave.model) {
+    var program = tdl.programs.loadProgram(
+        wave[gl.VERTEX_SHADER].defaultSource,
+        wave[gl.FRAGMENT_SHADER].defaultSource);
+    wave.model = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
   } else {
-    this.waveModel.setBuffers(arrays, true);
+    wave.model.setBuffers(arrays, true);
   }
 
-  if (!this.backgroundModel) {
+  var data = effects.data;
+  if (!data.model) {
     var tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
     var arrays = tdl.primitives.createPlane(2, 2, 1, 1);
     // Don't need the normals.
@@ -848,21 +873,21 @@ WebGLVisualizer.prototype.resize = function(width, height) {
     var textures = {
         tex: tex,
     };
-    var program = tdl.programs.loadProgramFromScriptTags(
-        'backgroundVertexShader',
-        'backgroundFragmentShader');
-    this.backgroundModel = new tdl.models.Model(program, arrays, textures);
-    this.backgroundTex = tex;
+    var program = tdl.programs.loadProgram(
+        data[gl.VERTEX_SHADER].defaultSource,
+        data[gl.FRAGMENT_SHADER].defaultSource);
+    data.model = new tdl.models.Model(program, arrays, textures);
+    this.dataTex = tex;
   }
 
-  this.backWidth = 1024;
-  var sampleBuf = new Uint8Array(this.backWidth);
-  this.backPos = 0;
-  this.backPixel = new Uint8Array(1);
-  this.backgroundTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.backWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
-  this.backgroundBuf = sampleBuf;
+  this.dataWidth = 1024;
+  var sampleBuf = new Uint8Array(this.dataWidth);
+  this.dataPos = 0;
+  this.dataPixel = new Uint8Array(1);
+  this.dataTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
+  this.dataBuf = sampleBuf;
 
   this.width = width;
   this.height = height;
@@ -874,17 +899,53 @@ WebGLVisualizer.prototype.reset = function() {
     this.height.setElement(i, [0]);
   }
   this.position = 0;
-  this.waveModel.buffers.height.set(this.height);
-  this.backPos = 0;
-  for (var i = 0; i < this.backWidth; ++i) {
-    this.backgroundBuf[i] = 0;
+  this.effects.wave.model.buffers.height.set(this.height);
+  this.dataPos = 0;
+  for (var i = 0; i < this.dataWidth; ++i) {
+    this.dataBuf[i] = 0;
   }
-  this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.backWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.backgroundBuf);
+  this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
 };
 
 WebGLVisualizer.prototype.setType = function(type) {
   this.type = type;
+};
+
+WebGLVisualizer.prototype.setOnCompile = function(callback) {
+  this.onCompileCallback = callback;
+};
+
+WebGLVisualizer.prototype.setShaderGLSL = function(effect, shaderType, source) {
+  var shaderInfo = effect[shaderType];
+  var source = source || shaderInfo.defaultSource;
+  if (source != shaderInfo.source) {
+    var error = effect.model.program.compileShader(shaderType, source);
+    if (error !== null) {
+      if (this.onCompileCallback) {
+        this.onCompileCallback(error);
+        return;
+      }
+    }
+    var error = effect.model.program.linkProgram();
+    if (error !== null) {
+      if (this.onCompileCallback) {
+        this.onCompileCallback(error);
+        return;
+      }
+    }
+    shaderInfo.source = source;
+    if (this.onCompileCallback) {
+      this.onCompileCallback(null);
+    }
+  }
+};
+
+WebGLVisualizer.prototype.setEffects = function(sections) {
+  return;
+  this.setShaderGLSL(this.effects.wave, gl.VERTEX_SHADER, sections['glsl-wave-vs']);
+  this.setShaderGLSL(this.effects.wave, gl.FRAGMENT_SHADER, sections['glsl-wave-fs']);
+  this.setShaderGLSL(this.effects.data, gl.FRAGMENT_SHADER, sections['glsl-data-vs']);
 };
 
 WebGLVisualizer.prototype.update = function(buffer, length) {
@@ -904,7 +965,7 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
       dest[d++] = h2 + 3 / 256;
     }
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
-    this.waveModel.buffers.height.setRange(view, this.position * 4 * 2);
+    this.effects.wave.model.buffers.height.setRange(view, this.position * 4 * 2);
     this.position = (this.position + max) % this.width;
     length -= max;
   }
@@ -918,17 +979,21 @@ WebGLVisualizer.prototype.render = function() {
   gl.clearColor(0,0,0.3,1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  this.backgroundTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  this.backPixel[0] = g_byteBeat.functions[0](g_byteBeat.backTime++) * 127 + 127;
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, this.backPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.backPixel);
-  this.backPos = this.backPos % this.backWidth;
+  var effects = this.effects;
+  var wave = this.effects.wave;
+  var data = this.effects.data;
 
-  this.backgroundUniforms.offset = this.backPos / this.backWidth;
-  this.backgroundModel.drawPrep(this.backgroundUniforms);
-  this.backgroundModel.draw();
-  this.waveUniforms.position = this.position / this.width;
-  this.waveModel.drawPrep(this.waveUniforms);
-  this.waveModel.draw();
+  this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  this.dataPixel[0] = g_byteBeat.functions[0](g_byteBeat.dataTime++) * 127 + 127;
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
+  this.dataPos = this.dataPos % this.dataWidth;
+
+  data.uniforms.offset = this.dataPos / this.dataWidth;
+  data.model.drawPrep(data.uniforms);
+  data.model.draw();
+  wave.uniforms.position = this.position / this.width;
+  wave.model.drawPrep(wave.uniforms);
+  wave.model.draw();
 };
 
 CanvasVisualizer = function() {
@@ -957,8 +1022,15 @@ CanvasVisualizer.prototype.reset = function() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 };
 
+CanvasVisualizer.prototype.setOnCompile = function(callback) {
+  this.onCompileCallback = callback;
+};
+
 CanvasVisualizer.prototype.setType = function(type) {
   this.type = type;
+};
+
+CanvasVisualizer.prototype.setEffects = function(sections) {
 };
 
 CanvasVisualizer.prototype.update = function(buffer, length) {
@@ -1029,7 +1101,7 @@ void main() {
   gl_FragColor = vec4(1,0,0,1);
 }
 </script>
-<script id="backgroundVertexShader" type="not-js">
+<script id="dataVertexShader" type="not-js">
 attribute vec2 position;
 uniform float offset;
 varying vec2 v_texCoord;
@@ -1038,7 +1110,7 @@ void main() {
   v_texCoord = vec2(position * 0.5 + 0.5) + vec2(offset, 0);
 }
 </script>
-<script id="backgroundFragmentShader" type="not-js">
+<script id="dataFragmentShader" type="not-js">
 precision mediump float;
 varying vec2 v_texCoord;
 uniform sampler2D tex;
