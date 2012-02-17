@@ -897,6 +897,7 @@ WebGLVisualizer.prototype.resize = function(width, height) {
       gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
   this.dataBuf = sampleBuf;
 
+  this.oneVerticalPixel = 2 / canvas.height;
   this.width = width;
   this.height = height;
   this.position = 0;
@@ -1013,14 +1014,17 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
   // Yes I know this is dumb. I should just do the last 2 at most.
   var dest = this.height.buffer;
   var offset = 0;
+  var v = this.oneVerticalPixel;
+  var v2 = v * 2;
   while (length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
     for (i = 0; i < max; ++i) {
       var h1 = buffer[offset++];
       var h2 = buffer[offset];
+      var dy = h1 - h2;
       dest[d++] = h1;
-      dest[d++] = h2 + 3 / 256;
+      dest[d++] = Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2));
     }
     var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
     this.effects.wave.model.buffers.height.setRange(view, this.position * 4 * 2);
