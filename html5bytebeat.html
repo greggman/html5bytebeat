@@ -652,6 +652,16 @@ ByteBeat.prototype.setExpressions = function(expressions) {
     x = x.replace(/\/\*.*?\*\//g, "");
     x = x.replace(/\/\/.*?\n/g, " ");
     // Translate a few things.
+    x = x.replace(/(Math\.)?abs/g, "Math.abs");
+    x = x.replace(/(Math\.)?max/g, "Math.max");
+    x = x.replace(/(Math\.)?min/g, "Math.min");
+    x = x.replace(/(Math\.)?pow/g, "Math.pow");
+    x = x.replace(/(Math\.)?sqrt/g, "Math.sqrt");
+    x = x.replace(/(Math\.)?random/g, "Math.random");
+    x = x.replace(/(Math\.)?round/g, "Math.round");
+    x = x.replace(/(Math\.)?tan/g, "Math.tan");
+    x = x.replace(/(Math\.)?log/g, "Math.log");
+    x = x.replace(/(Math\.)?exp/g, "Math.exp");
     x = x.replace(/(Math\.)?sin/g, "Math.sin");
     x = x.replace(/(Math\.)?cos/g, "Math.cos");
     x = x.replace(/(Math\.)?tan/g, "Math.tan");
@@ -1134,6 +1144,7 @@ CanvasVisualizer.prototype.render = function() {
   var ps = this.positions;
   var halfHeight = this.height / 2;
   ctx.fillStyle = "rgb(255,0,0)";
+  /* horizontal */
   while (count) {
     ctx.clearRect(dp, old[dp], 1, 1);
     var newPos = Math.floor(-ps[dp] * halfHeight + halfHeight);
@@ -1142,6 +1153,24 @@ CanvasVisualizer.prototype.render = function() {
     dp = (dp + 1) % this.width;
     --count;
   }
+
+  /* vertical hack (drawing the wave vertically should be faster */
+  /*
+  var w = this.width;
+  var h = this.height;
+  var hw = Math.floor(w * 0.5);
+  while (count) {
+    var y = Math.floor(dp * h / w);
+    var oldX = Math.floor(old[dp] * w / h * 0.3);
+    ctx.clearRect(hw - oldX, y, oldX * 2, 1);
+    var newPos = Math.floor(-ps[dp] * halfHeight + halfHeight);
+    var x = Math.floor(newPos * w / h * 0.3);
+    ctx.fillRect(hw - x, y, x * 2, 1, 1);
+    old[dp] = newPos;
+    dp = (dp + 1) % this.width;
+    --count;
+  }
+  */
   this.drawCount = 0;
   this.drawPosition = dp;
 };
