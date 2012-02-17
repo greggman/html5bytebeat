@@ -55,16 +55,18 @@ is the same as
 
     Math.sin(t)
 
-In infix mode there is also the 'extra' object which provides the mouse position
-
-    Math.sin(t * extra.mouseX * 0.001) + Math.cos(t * extra.mouseY * 0.003)
-
 *Postfix* requires that each element have at least one space between it.
 
     t2*    // BAD!
     t 2 *  // Good!
 
+### Extra
+
 Comments can be both // or /* */ style
+
+The mouse position is available
+
+    Math.sin(t * mouseX * 0.001) + Math.cos(t * mouseY * 0.003)
 
 
 For more info
