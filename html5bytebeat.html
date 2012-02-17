@@ -449,6 +449,16 @@ ByteBeat = function() {
     return Math.sin(t) * 0.1;
   }]
   this.expressions = ["Math.sin(t) * 0.1"];
+  this.extra = {
+    mouseX: 0,
+    mouseY: 0
+  };
+
+  window.addEventListener('mousemove', function(event) {
+    var extra = that.extra;
+    extra.mouseX = event.clientX;
+    extra.mouseY = event.clientY;
+  }, true);
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
@@ -580,7 +590,7 @@ ByteBeat.prototype.recompile = function() {
 };
 
 ByteBeat.prototype.setExpressions = function(expressions) {
-  function compileExpression(x, expressionType) {
+  function compileExpression(x, expressionType, extra, window) {
     if (expressionType == 2) { // glitch
       // Convert to postfix
       var postfix = [];
@@ -687,7 +697,7 @@ ByteBeat.prototype.setExpressions = function(expressions) {
     for (var i = 0; i < expressions.length; ++i) {
       var exp = expressions[i];
       if (exp != this.expressions[i]) {
-        funcs.push(compileExpression(exp, this.expressionType));
+        funcs.push(compileExpression(exp, this.expressionType, this.extra));
       } else {
         if (this.functions[i]) {
           funcs.push(this.functions[i]);
