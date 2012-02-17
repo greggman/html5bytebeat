@@ -550,10 +550,6 @@ ByteBeat.prototype.getTime = function() {
   return this.convertToDesiredSampleRate(this.time);
 };
 
-function isOperator(token) {
-  return !(token == 't' || (token.charAt(0) >= '0' && token.charAt(0) <= '9'));
-}
-
 var g_glitchToPostfix = {
     'a': 't',
     'c': 'drop',
@@ -590,6 +586,14 @@ ByteBeat.prototype.recompile = function() {
 };
 
 ByteBeat.prototype.setExpressions = function(expressions) {
+  function removeCommentsAndLineBreaks(x) {
+    // remove comments (hacky)
+    x = x.replace(/\/\/.*/g, " ");
+    x = x.replace(/\n/g, " ");
+    x = x.replace(/\/\*.*?\*\//g, " ");
+    return x;
+  }
+
   function compileExpression(x, expressionType, extra, window) {
     if (expressionType == 2) { // glitch
       // Convert to postfix
@@ -602,65 +606,95 @@ ByteBeat.prototype.setExpressions = function(expressions) {
       expressionType = 1;
     }
     if (expressionType == 1) {  // postfix
-      // remove comments (hacky)
-      x = x.replace(/\/\*.*?\*\//g, "");
-      x = x.replace(/\/\/.*?\n/g, " ");
+      x = removeCommentsAndLineBreaks(x);
       // compress space
       x = x.replace(/(\r\n|\r|\n|\t| )+/gm, " ");
       var tokens = strip(x).split(" ");
       var stack = [];
       for (var i = 0; i < tokens.length; ++i) {
         var token = tokens[i];
-        if (isOperator(token)) {
-          switch (token.toLowerCase()) {
-          case '>':
-            var v1 = stack.pop();
-            var v2 = stack.pop();
-            stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
-            break;
-          case '<':
-            var v1 = stack.pop();
-            var v2 = stack.pop();
-            stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
-            break;
-          case '=':
-            var v1 = stack.pop();
-            var v2 = stack.pop();
-            stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
-            break;
-          case 'drop':
-            stack.pop();
-            break;
-          case 'dup':
-            var a0 = stack.pop();
-            stack.push(a0);
-            stack.push(a0);
-            break;
-          case 'swap':
-            var a1 = stack.pop();
-            var a0 = stack.pop();
-            stack.push(a1);
-            stack.push(a0);
-            break;
-          case 'pick':
-            throw ('not implemented');
-            break;
-          default:
-            var a1 = stack.pop();
-            var a0 = stack.pop();
-            stack.push("(" + a0 + token + a1 + ")");
-            break;
-          }
-        } else {
+        switch (token.toLowerCase()) {
+        case '>':
+          var v1 = stack.pop();
+          var v2 = stack.pop();
+          stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
+          break;
+        case '<':
+          var v1 = stack.pop();
+          var v2 = stack.pop();
+          stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
+          break;
+        case '=':
+          var v1 = stack.pop();
+          var v2 = stack.pop();
+          stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
+          break;
+        case 'drop':
+          stack.pop();
+          break;
+        case 'dup':
+          var a0 = stack.pop();
+          stack.push(a0);
+          stack.push(a0);
+          break;
+        case 'swap':
+          var a1 = stack.pop();
+          var a0 = stack.pop();
+          stack.push(a1);
+          stack.push(a0);
+          break;
+        case 'pick':
+          throw ('not implemented');
+          break;
+        case 'abs':
+        case 'sqrt':
+        case 'round':
+        case 'tan':
+        case 'log':
+        case 'exp':
+        case 'sin':
+        case 'cos':
+        case 'tan':
+        case 'floor':
+        case 'ceil':
+        case 'int':
+          var a0 = stack.pop();
+          stack.push(token + "(" + a0 + ")");
+          break;
+        case 'max':
+        case 'min':
+        case 'pow':
+          var a0 = stack.pop();
+          var a1 = stack.pop();
+          stack.push(token + "(" + a1 + "," + a0 + ")");
+          break;
+        case 'random':
+          stack.push(token + "()");
+          break;
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '%':
+        case '>>':
+        case '<<':
+        case '|':
+        case '&':
+        case '^':
+        case '&&':
+        case '||':
+          var a1 = stack.pop();
+          var a0 = stack.pop();
+          stack.push("(" + a0 + token + a1 + ")");
+          break;
+        default:
           stack.push(token);
+          break;
         }
       }
       x = stack.pop();
     }
-
-    // remove comments (hacky)
-    x = x.replace(/\/\*.*?\*\//g, "");
-    x = x.replace(/\/\/.*?\n/g, " ");
+    x = removeCommentsAndLineBreaks(x);
     // Translate a few things.
     x = x.replace(/(Math\.)?abs/g, "Math.abs");
     x = x.replace(/(Math\.)?max/g, "Math.max");
@@ -678,6 +712,8 @@ ByteBeat.prototype.setExpressions = function(expressions) {
     x = x.replace(/(Math\.)?floor/g, "Math.floor");
     x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
     x = x.replace(/(Math\.)?int/g, "Math.floor");
+    x = x.replace(/(extra\.)?mouseX/g, "extra.mouseX");
+    x = x.replace(/(extra\.)?mouseY/g, "extra.mouseY");
 
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;

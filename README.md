@@ -32,9 +32,48 @@ Here are a few sample songs
 * http://goo.gl/lQyDd
 * http://goo.gl/6Uz0d
 
-For more info on Bytebeat check out <http://canonical.org/~kragen/bytebeat/>
+Instructions
+------------
+
+### Modes
+
+There 2 modes
+
+* bytebeat: Your expression is expected to generate byte values from 0 to 255
+* floatbeat: Your expression is expected to generate float values from -1.0 to 1.0
+
+### Expression Types
+* Infix: Standard expressions eg. "(t * 2) / 4"
+* Postfix(rpn): Reverse Polish Notation eg "t 2 * 4 /"
+
+*Infix* is standard JavaScript so all Math functions are available.
+Most math functions you can drop the "Math." part. In other words
+
+    sin(t)
+
+is the same as
+
+    Math.sin(t)
+
+In infix mode there is also the 'extra' object which provides the mouse position
+
+    Math.sin(t * extra.mouseX * 0.001) + Math.cos(t * extra.mouseY * 0.003)
+
+*Postfix* requires that each element have at least one space between it.
+
+    t2*    // BAD!
+    t 2 *  // Good!
+
+Comments can be both // or /* */ style
+
+
+For more info
+-------------
+Check out <http://canonical.org/~kragen/bytebeat/> and be sure follow the many links.
+
 
 Special thanks to:
+------------------
 
 * Paul Pridham for his [Glitch Machine iOS Bytebeat program](http://madgarden.net/apps/glitch-machine/).
 * Mr.Doob for his [GLSL Sandbox](http://mrdoob.com/projects/glsl_sandbox/) where much of this code was cribbed.
