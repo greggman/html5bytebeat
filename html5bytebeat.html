@@ -803,7 +803,7 @@ ByteBeat.prototype.setExpressions = function(expressions) {
     function replacer(str, obj, p1, name) {
       return obj.hasOwnProperty(p1) ? (name + p1) : str;
     }
-
+    x = x.replace(/\bint\b/g, "floor");
     x = x.replace(/(?:Math\.)?(\w+)/g, function(substr, p1) {
       return replacer(substr, Math, p1, "Math.");
     });
