@@ -336,6 +336,7 @@ function main() {
     codeElem.style.width = ( window.innerWidth - 75 ) + 'px';
     codeElem.style.height = ( window.innerHeight - 125 ) + 'px';
 
+    g_byteBeat.resize(canvas.clientWidth, canvas.clientHeight);
     g_visualizer.resize(canvas.clientWidth, canvas.clientHeight);
   }
 }
@@ -377,7 +378,7 @@ function compile(text) {
     }
     g_byteBeat.setExpressions(expressions);
   }
-  // comment in to allow GLSL editing
+  // comment in to allow live GLSL editing
   //g_visualizer.setEffects(sections);
 }
 
@@ -451,7 +452,9 @@ ByteBeat = function() {
   this.expressions = ["Math.sin(t) * 0.1"];
   this.extra = {
     mouseX: 0,
-    mouseY: 0
+    mouseY: 0,
+    width: 1,
+    height: 1
   };
 
   window.addEventListener('mousemove', function(event) {
@@ -536,6 +539,11 @@ ByteBeat = function() {
 function strip(s) {
   return s.replace(/^\s+/,"").replace(/\s+$/,"");
 }
+
+ByteBeat.prototype.resize = function(width, height) {
+  this.extra.width = width;
+  this.extra.height = height;
+};
 
 ByteBeat.prototype.setVisualizer = function(visualizer) {
   this.visualizer = visualizer;
@@ -696,24 +704,16 @@ ByteBeat.prototype.setExpressions = function(expressions) {
     }
     x = removeCommentsAndLineBreaks(x);
     // Translate a few things.
-    x = x.replace(/(Math\.)?abs/g, "Math.abs");
-    x = x.replace(/(Math\.)?max/g, "Math.max");
-    x = x.replace(/(Math\.)?min/g, "Math.min");
-    x = x.replace(/(Math\.)?pow/g, "Math.pow");
-    x = x.replace(/(Math\.)?sqrt/g, "Math.sqrt");
-    x = x.replace(/(Math\.)?random/g, "Math.random");
-    x = x.replace(/(Math\.)?round/g, "Math.round");
-    x = x.replace(/(Math\.)?tan/g, "Math.tan");
-    x = x.replace(/(Math\.)?log/g, "Math.log");
-    x = x.replace(/(Math\.)?exp/g, "Math.exp");
-    x = x.replace(/(Math\.)?sin/g, "Math.sin");
-    x = x.replace(/(Math\.)?cos/g, "Math.cos");
-    x = x.replace(/(Math\.)?tan/g, "Math.tan");
-    x = x.replace(/(Math\.)?floor/g, "Math.floor");
-    x = x.replace(/(Math\.)?ceil/g, "Math.ceil");
-    x = x.replace(/(Math\.)?int/g, "Math.floor");
-    x = x.replace(/(extra\.)?mouseX/g, "extra.mouseX");
-    x = x.replace(/(extra\.)?mouseY/g, "extra.mouseY");
+    function replacer(str, obj, p1, name) {
+      return obj.hasOwnProperty(p1) ? (name + p1) : str;
+    }
+
+    x = x.replace(/(?:Math\.)?(\w+)/g, function(substr, p1) {
+      return replacer(substr, Math, p1, "Math.");
+    });
+    x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
+      return replacer(substr, extra, p1, "extra.");
+    });
 
     var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
     var f = eval(c).fn;

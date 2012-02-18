@@ -46,7 +46,7 @@ There 2 modes
 * Infix: Standard expressions eg. "(t * 2) / 4"
 * Postfix(rpn): Reverse Polish Notation eg "t 2 * 4 /"
 
-*Infix* is standard JavaScript so all Math functions are available.
+**Infix** is standard JavaScript so all Math functions are available.
 Most math functions you can drop the "Math." part. In other words
 
     sin(t)
@@ -55,7 +55,7 @@ is the same as
 
     Math.sin(t)
 
-*Postfix* requires that each element have at least one space between it.
+**Postfix** requires that each element have at least one space between it.
 
     t2*    // BAD!
     t 2 *  // Good!
@@ -64,9 +64,14 @@ is the same as
 
 Comments can be both // or /* */ style
 
-The mouse position is available
+There are several extra inputs available
+
+The mouse position is available as **mouseX** and **mouseY**
 
     Math.sin(t * mouseX * 0.001) + Math.cos(t * mouseY * 0.003)
+
+The size of the window is available **width** and **height**
+
 
 
 For more info
