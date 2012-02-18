@@ -120,6 +120,28 @@ option {
     color: #ffffff;
     background-color: #000000;
 }
+#savedialog {
+  display: none;
+  z-index: 10;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+}
+#savecontainer {
+  display: table-cell;
+  vertical-align: middle;
+}
+#saveform {
+  margin: auto;
+  width: 400px;
+  height: 200px;
+  background-color: #888;
+  padding: 20px;
+  border-radius: 5px;
+}
 </style>
 <script>
 tdl.require('tdl.buffers');
@@ -138,6 +160,11 @@ function $(id) {
 
 var g_byteBeat;
 var g_visualizer;
+var g_screenshot;
+var g_saving = false;
+var g_saveDialogInitialized = false;
+var g_screenshotCanvas;
+var g_screenshotContext;
 var gl;
 var playing = false;
 var play;
@@ -162,6 +189,11 @@ function main() {
   if (!g_byteBeat.good) {
     alert("This page needs a browser the supports the Web Audio API or the Audio Data API: Chrome, Chromium, Firefox, or WebKit");
   }
+
+  g_screenshotCanvas = document.createElement("canvas");
+  g_screenshotCanvas.width = 400;
+  g_screenshotCanvas.height = 100;
+  g_screenshotContext = g_screenshotCanvas.getContext("2d");
 
   function resetToZero() {
     g_byteBeat.reset();
@@ -236,12 +268,19 @@ function main() {
   }, false);
   controls.appendChild(visualTypeElem);
 
+  if (false) {
+    saveElem = document.createElement("button");
+    saveElem.textContent = "save";
+    saveElem.addEventListener('click', startSave);
+    controls.appendChild(saveElem);
+  }
+
   compileStatusElem = document.createElement('button');
   compileStatusElem.textContent = "---";
   controls.appendChild(compileStatusElem);
 
   gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false}, function(){});
-  g_visualizer = gl ? new WebGLVisualizer() : new CanvasVisualizer();
+  g_visualizer = gl ? new WebGLVisualizer(canvas) : new CanvasVisualizer(canvas);
   g_byteBeat.setVisualizer(g_visualizer);
 
   codeElem = $("code");
@@ -336,6 +375,69 @@ function main() {
     g_byteBeat.resize(canvas.clientWidth, canvas.clientHeight);
     g_visualizer.resize(canvas.clientWidth, canvas.clientHeight);
   }
+}
+//  var dataURL = captureScreenshot(400, 100, firstLine);
+
+function captureScreenshot(ctx, canvas, text) {
+  var width = ctx.canvas.width;
+  var height = ctx.canvas.height;
+  ctx.fillStyle = "#008";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(canvas, 0, 0, width, height);
+  ctx.font = "30px monospace";
+  var infos = [
+    {x: 2, y: 2, color: "#000"},
+    {x: 0, y: 1, color: "#000"},
+    {x: 1, y: 0, color: "#000"},
+    {x: 0, y: 0, color: "#FFF"}
+  ];
+  for (var i = 0; i < infos.length; ++i) {
+    var info = infos[i];
+    ctx.fillStyle = info.color;
+    ctx.fillText(text, 20 + info.x, height - 20 + info.y, width - 40);
+  }
+  return g_screenshotCanvas.toDataURL();
+}
+
+function startSave() {
+  if (!g_saving) {
+    g_saving = true;
+    g_visualizer.capture(function(canvas) {
+      var firstLine = strip(strip(codeElem.value.split("\n")[0]).replace(/^\/\//, ''));
+      g_screenshot = captureScreenshot(g_screenshotContext, canvas, firstLine);
+      setTimeout(showSaveDialog, 1);
+    });
+  }
+}
+
+function showSaveDialog() {
+  function closeSave() {
+    $("savedialog").style.display = "none";
+    window.removeEventListener('keypress', handleKeyPress);
+    g_saving = false;
+    g_screenshot = "";  // just cuz.
+  }
+  function handleKeyPress(event) {
+    log(event.keyCode);
+    if (event.keyCode == 27) {
+      closeSave()
+    }
+  }
+  function save() {
+    log("do something to save");
+    closeSave();
+  }
+
+  window.addEventListener('keypress', handleKeyPress);
+  if (!g_saveDialogInitialized) {
+    g_saveDialogInitialized = true;
+    $("save").addEventListener('click', save);
+    $("cancel").addEventListener('click', closeSave);
+  }
+  var saveDialogElem = $("savedialog");
+  var screenshotElem = $("screenshot");
+  saveDialogElem.style.display = "table";
+  screenshotElem.src = g_screenshot;
 }
 
 function dummyFunction() {};
@@ -851,7 +953,34 @@ ByteBeat.prototype.pause = function() {
   }
 };
 
-WebGLVisualizer = function() {
+Visualizer = function(canvas) {
+  this.canvas = canvas;
+  this.type = 1;
+};
+
+Visualizer.prototype.setType = function(type) {
+  this.type = type;
+
+};
+
+Visualizer.prototype.setOnCompile = function(callback) {
+  this.onCompileCallback = callback;
+};
+
+Visualizer.prototype.capture = function(callback) {
+  this.captureCallback = callback;
+};
+
+Visualizer.prototype.handleCapture = function() {
+  var fn = this.captureCallback;
+  if (fn) {
+    this.captureCallback = undefined;
+    fn(this.canvas);
+  }
+};
+
+WebGLVisualizer = function(canvas) {
+  Visualizer.call(this, canvas);
   this.type = 1;
   this.temp = new Float32Array(1);
   this.resolution = new Float32Array(2);
@@ -888,7 +1017,10 @@ WebGLVisualizer = function() {
   this.resize(512, 512);
 };
 
+tdl.base.inherit(WebGLVisualizer, Visualizer);
+
 WebGLVisualizer.prototype.resize = function(width, height) {
+  var canvas = this.canvas;
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
   gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
@@ -970,14 +1102,6 @@ WebGLVisualizer.prototype.reset = function() {
   gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
       gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
-};
-
-WebGLVisualizer.prototype.setType = function(type) {
-  this.type = type;
-};
-
-WebGLVisualizer.prototype.setOnCompile = function(callback) {
-  this.onCompileCallback = callback;
 };
 
 WebGLVisualizer.prototype.setShaderGLSL = function(effect, vertexShaderSource, fragmentShaderSource) {
@@ -1085,7 +1209,7 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
 };
 
 WebGLVisualizer.prototype.render = function() {
-  if (!this.type) {
+  if (!this.type && !this.captureCallback) {
     return;
   }
 
@@ -1096,6 +1220,7 @@ WebGLVisualizer.prototype.render = function() {
   var wave = this.effects.wave;
   var data = this.effects.data;
 
+  var canvas = this.canvas;
   this.resolution[0] = canvas.width;
   this.resolution[1] = canvas.height;
 
@@ -1114,16 +1239,22 @@ WebGLVisualizer.prototype.render = function() {
   wave.uniforms.time = now - this.then;
   wave.model.drawPrep(wave.uniforms);
   wave.model.draw();
+
+  this.handleCapture();
 };
 
-CanvasVisualizer = function() {
+CanvasVisualizer = function(canvas) {
+  Visualizer.call(this, canvas);
   this.ctx = canvas.getContext("2d");
   this.temp = new Float32Array(1);
   this.resize(512, 512);
   this.type = 1;
 };
 
+tdl.base.inherit(CanvasVisualizer, Visualizer);
+
 CanvasVisualizer.prototype.resize = function(width, height) {
+  var canvas = this.canvas;
   canvas.width = canvas.clientWidth;
   canvas.height = canvas.clientHeight;
   this.positions = new Float32Array(width);
@@ -1139,22 +1270,15 @@ CanvasVisualizer.prototype.reset = function() {
   this.position = 0;
   this.drawPosition = 0;
   this.drawCount = 0;
+  var canvas = this.canvas;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-};
-
-CanvasVisualizer.prototype.setOnCompile = function(callback) {
-  this.onCompileCallback = callback;
-};
-
-CanvasVisualizer.prototype.setType = function(type) {
-  this.type = type;
 };
 
 CanvasVisualizer.prototype.setEffects = function(sections) {
 };
 
 CanvasVisualizer.prototype.update = function(buffer, length) {
-  if (!this.type) {
+  if (!this.type && !this.captureCallback) {
     return;
   }
   // Yes I know this is dumb. I should just do the last 2 at most.
@@ -1171,6 +1295,7 @@ CanvasVisualizer.prototype.update = function(buffer, length) {
     length -= max;
   }
   this.position = p;
+  this.handleCapture();
 };
 
 CanvasVisualizer.prototype.render = function() {
@@ -1225,6 +1350,16 @@ CanvasVisualizer.prototype.render = function() {
 </div>
   <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
 <textarea id="code"></textarea>
+</div>
+<div id="savedialog">
+  <div id="savecontainer">
+    <div id="saveform">
+      <div>
+        <img id="screenshot" />
+      </div>
+      <div><button id="save">save</button><button id="cancel">cancel</button></div>
+    </div>
+  </div>
 </div>
 <script id="waveVertexShader" type="not-js">
 attribute float column;
