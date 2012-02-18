@@ -240,9 +240,6 @@ function main() {
   compileStatusElem.textContent = "---";
   controls.appendChild(compileStatusElem);
 
-  errorMessageElem = document.createElement('button');
-  controls.appendChild(errorMessageElem);
-
   gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false}, function(){});
   g_visualizer = gl ? new WebGLVisualizer() : new CanvasVisualizer();
   g_byteBeat.setVisualizer(g_visualizer);
@@ -384,14 +381,11 @@ function compile(text) {
 
 function handleCompileError(error) {
   if (error == null) {
-    errorMessageElem.style.display = "none";
     compileStatusElem.textContent = "compiled successfully";
     compileStatusElem.style.color = "#0F0";
     setURL();
   } else {
-    errorMessageElem.style.display = "";
-    errorMessageElem.textContent = error;
-    compileStatusElem.textContent = "compiled with errors";
+    compileStatusElem.textContent = error;
     compileStatusElem.style.color = "#F00";
   }
 }
