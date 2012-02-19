@@ -481,6 +481,7 @@ function compile(text) {
     }
     g_byteBeat.setExpressions(expressions);
   }
+  g_byteBeat.setOptions(sections);
   // comment in to allow live GLSL editing
   //g_visualizer.setEffects(sections);
 }
@@ -543,6 +544,7 @@ ByteBeat = function() {
   this.buffer1 = new Float32Array(4096);
   this.desiredSampleRate = 8000;
   this.time = 0;
+  this.expandMode = 0;
   this.dataTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
@@ -696,6 +698,10 @@ ByteBeat.prototype.setOnCompile = function(callback) {
 
 ByteBeat.prototype.recompile = function() {
   this.setExpressions(this.getExpressions());
+};
+
+ByteBeat.prototype.setOptions = function(sections) {
+  this.expandMode = (sections['linear'] !== undefined)
 };
 
 ByteBeat.prototype.setExpressions = function(expressions) {
@@ -929,17 +935,36 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
       }
     }
   }
-  if (rightData) {
-    for (var i = 0; i < dataLength; ++i) {
-      var ndx = this.convertToDesiredSampleRate(i);
-      leftData[i] = buffer0[ndx];
-      rightData[i] = buffer1[ndx];
+  if (dataLength) {
+    var step = this.convertToDesiredSampleRate(dataLength) / dataLength;
+    var ndx = 0;
+
+    function interp(buf) {
+      var n = Math.floor(ndx);
+      var f = ndx % 1;
+      var v0 = buf[n];
+      var v1 = buf[n + 1];
+      return v0 + (v1 - v0) * f;
     }
-  } else {
-    for (var i = 0; i < dataLength; ++i) {
-      var ndx = this.convertToDesiredSampleRate(i);
-      leftData[i * 2] = buffer0[ndx];
-      leftData[i * 2 + 1] = buffer1[ndx];
+
+    function trunc(buf) {
+      return buf[Math.floor(ndx)];
+    }
+
+    var expandFn = this.expandMode ? interp : trunc;
+
+    if (rightData) {
+      for (var i = 0; i < dataLength; ++i) {
+        leftData[i] = expandFn(buffer0);
+        rightData[i] = expandFn(buffer1);
+        ndx += step;
+      }
+    } else {
+      for (var i = 0; i < dataLength; ++i) {
+        leftData[i * 2] = expandFn(buffer0);
+        leftData[i * 2 + 1] = expandFn(buffer1);
+        ndx += step;
+      }
     }
   }
 
