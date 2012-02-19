@@ -128,7 +128,7 @@ option {
   top: 0px;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgba(0, 0, 0, 0.7);
 }
 #savecontainer {
   display: table-cell;
@@ -279,7 +279,13 @@ function main() {
   compileStatusElem.textContent = "---";
   controls.appendChild(compileStatusElem);
 
-  gl = tdl.webgl.setupWebGL(canvas, {alpha:false, antialias:false}, function(){});
+  gl = tdl.webgl.setupWebGL(
+    canvas,
+    { alpha:false,
+      antialias:false,
+      preserveDrawingBuffer:true
+    },
+    function(){});
   g_visualizer = gl ? new WebGLVisualizer(canvas) : new CanvasVisualizer(canvas);
   g_byteBeat.setVisualizer(g_visualizer);
 
@@ -384,7 +390,7 @@ function captureScreenshot(ctx, canvas, text) {
   ctx.fillStyle = "#008";
   ctx.fillRect(0, 0, width, height);
   ctx.drawImage(canvas, 0, 0, width, height);
-  ctx.font = "30px monospace";
+  ctx.font = "bold 20px monospace";
   var infos = [
     {x: 2, y: 2, color: "#000"},
     {x: 0, y: 1, color: "#000"},
@@ -402,11 +408,9 @@ function captureScreenshot(ctx, canvas, text) {
 function startSave() {
   if (!g_saving) {
     g_saving = true;
-    g_visualizer.capture(function(canvas) {
-      var firstLine = strip(strip(codeElem.value.split("\n")[0]).replace(/^\/\//, ''));
-      g_screenshot = captureScreenshot(g_screenshotContext, canvas, firstLine);
-      setTimeout(showSaveDialog, 1);
-    });
+    var firstLine = strip(strip(codeElem.value.split("\n")[0]).replace(/^\/\//, ''));
+    g_screenshot = captureScreenshot(g_screenshotContext, canvas, firstLine);
+    showSaveDialog();
   }
 }
 
@@ -562,6 +566,11 @@ ByteBeat = function() {
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();
     this.node = this.context.createJavaScriptNode(4096, 2, 2);
+    //this.context = { };
+    //this.node = {
+    //  connect: function() { },
+    //  disconnect: function() { }
+    //};
     this.actualSampleRate = this.context.sampleRate;
     this.node.onaudioprocess = function(e) {
       var data = e.outputBuffer.getChannelData(0);
