@@ -847,7 +847,7 @@ ByteBeat.prototype.setExpressions = function(expressions) {
       return replacer(substr, extra, p1, "extra.");
     });
 
-    var c = "temp = {fn: function(t) { return " + strip(x) + ";}}";
+    var c = "temp = {fn: function(t, i) { return " + strip(x) + ";}}";
     var f = eval(c).fn;
 
     for (var i = 0; i < 1000; i += 100) {
@@ -935,24 +935,24 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
     buffer1 = this.buffer1;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  );
-        buffer1[i] = fn1(time++);
+        buffer0[i] = fn0(time  , undefined);
+        buffer1[i] = fn1(time++, undefined);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  ) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time  , undefined) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++, undefined) & 255) / 127 - 1;
       }
     }
   } else {
     buffer1 = this.buffer0;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++);
+        buffer0[i] = fn0(time++, undefined);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time++, undefined) & 255) / 127 - 1;
       }
     }
   }
