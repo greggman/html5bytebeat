@@ -558,7 +558,10 @@ ByteBeat = function() {
     mouseX: 0,
     mouseY: 0,
     width: 1,
-    height: 1
+    height: 1,
+    tiltX: 0,
+    tiltY: 0,
+    compass: 0,
   };
 
   window.addEventListener('mousemove', function(event) {
@@ -566,6 +569,22 @@ ByteBeat = function() {
     extra.mouseX = event.clientX;
     extra.mouseY = event.clientY;
   }, true);
+
+  if (window.DeviceOrientationEvent) {
+    // Listen for the deviceorientation event and handle the raw data
+    window.addEventListener('deviceorientation', function(eventData) {
+      console.log(eventData);
+      var extra = that.extra;
+      // gamma is the left-to-right tilt in degrees, where right is positive
+      extra.tiltX = eventData.gamma;
+
+      // beta is the front-to-back tilt in degrees, where front is positive
+      extra.tiltY = eventData.beta;
+
+      // alpha is the compass direction the device is facing in degrees
+      extra.compass = eventData.alpha;
+    }, false);
+  }
 
   if (window.webkitAudioContext) {
     this.context = new webkitAudioContext();

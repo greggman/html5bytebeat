@@ -68,11 +68,13 @@ There are several extra inputs available
 
 The mouse position is available as **mouseX** and **mouseY**
 
-    Math.sin(t * mouseX * 0.001) + Math.cos(t * mouseY * 0.003)
+    sin(t * mouseX * 0.001) + cos(t * mouseY * 0.003)
 
 The size of the window is available **width** and **height**
 
+The orientation of a device may be available as **tiltX** and **tiltY**.
 
+    (sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
 
 For more info
 -------------
