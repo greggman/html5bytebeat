@@ -76,6 +76,10 @@ The orientation of a device may be available as **tiltX** and **tiltY**.
 
     (sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
 
+Also note, using the comma operator you can write fairly arbitrary code.
+
+    http://goo.gl/IZVBS
+
 For more info
 -------------
 Check out <http://canonical.org/~kragen/bytebeat/> and be sure follow the many links.
