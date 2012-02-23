@@ -547,7 +547,6 @@ ByteBeat = function() {
   this.desiredSampleRate = 8000;
   this.time = 0;
   this.expandMode = 0;
-  this.dataTime = 0;
   this.floatBeat = false;
   this.expressionType = 0;
   this.functions = [function(t) {
@@ -573,7 +572,6 @@ ByteBeat = function() {
   if (window.DeviceOrientationEvent) {
     // Listen for the deviceorientation event and handle the raw data
     window.addEventListener('deviceorientation', function(eventData) {
-      console.log(eventData);
       var extra = that.extra;
       // gamma is the left-to-right tilt in degrees, where right is positive
       extra.tiltX = eventData.gamma;
@@ -679,7 +677,6 @@ ByteBeat.prototype.setVisualizer = function(visualizer) {
 
 ByteBeat.prototype.reset = function() {
   this.time = 0;
-  this.dataTime = 0;
 };
 
 ByteBeat.prototype.getTime = function() {
@@ -996,6 +993,13 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   this.time += dataLength;
 };
 
+ByteBeat.prototype.getSampleForTime = function(time) {
+  if (this.floatBeat) {
+    return this.functions[0](time, undefined);
+  }
+  return (this.functions[0](time, undefined) & 255) / 127 - 1;
+};
+
 ByteBeat.prototype.play = function() {
   if (this.node) {
     this.node.connect(this.context.destination);
@@ -1044,14 +1048,24 @@ WebGLVisualizer = function(canvas) {
       uniforms: {
         position: 0,
         time: 0,
-        resolution: this.resolution
+        resolution: this.resolution,
+        color: new Float32Array([1, 0, 0, 1])
+      }
+    },
+    sample: {
+      uniforms: {
+        offset: 0,
+        time: 0,
+        resolution: this.resolution,
+        color: new Float32Array([0, 1, 0, 1])
       }
     },
     data: {
       uniforms: {
         offset: 0,
         time: 0,
-        resolution: this.resolution
+        resolution: this.resolution,
+        color: new Float32Array([0, 0, 1, 1])
       }
     }
   };
@@ -1061,6 +1075,12 @@ WebGLVisualizer = function(canvas) {
   };
   this.effects.wave[gl.FRAGMENT_SHADER] = {
     defaultSource: $("waveFragmentShader").text
+  };
+  this.effects.sample[gl.VERTEX_SHADER] = {
+    defaultSource: $("sampleVertexShader").text
+  };
+  this.effects.sample[gl.FRAGMENT_SHADER] = {
+    defaultSource: $("sampleFragmentShader").text
   };
   this.effects.data[gl.VERTEX_SHADER] = {
     defaultSource: $("dataVertexShader").text
@@ -1124,15 +1144,51 @@ WebGLVisualizer.prototype.resize = function(width, height) {
   }
 
   this.dataWidth = 1024;
-  var sampleBuf = new Uint8Array(this.dataWidth);
+  var dataBuf = new Uint8Array(this.dataWidth);
   this.dataPos = 0;
   this.dataPixel = new Uint8Array(1);
   this.dataTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
+      gl.LUMINANCE, gl.UNSIGNED_BYTE, dataBuf);
+  this.dataBuf = dataBuf;
+  this.dataTime = 0;
+
+  var sample = effects.sample;
+  if (!sample.model) {
+    var tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
+    var arrays = tdl.primitives.createPlane(2, 2, 1, 1);
+    // Don't need the normals.
+    delete arrays.normal;
+    delete arrays.texCoord;
+    // rotate from xz plane to xy plane
+    tdl.primitives.reorient(arrays,
+        [1, 0, 0, 0,
+         0, 0, 1, 0,
+         0, -1, 0, 0,
+         0, 0, 0, 1]);
+    var textures = {
+        tex: tex,
+    };
+    var program = tdl.programs.loadProgram(
+        sample[gl.VERTEX_SHADER].defaultSource,
+        sample[gl.FRAGMENT_SHADER].defaultSource);
+    sample.model = new tdl.models.Model(program, arrays, textures);
+    this.sampleTex = tex;
+  }
+
+  this.sampleWidth = 1024;
+  var sampleBuf = new Uint8Array(this.sampleWidth);
+  this.samplePos = 0;
+  this.samplePixel = new Uint8Array(1);
+  this.sampleTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.LUMINANCE, this.sampleWidth, 1, 0,
       gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
-  this.dataBuf = sampleBuf;
+  this.sampleBuf = sampleBuf;
+  this.sampleTime = 0;
 
   this.oneVerticalPixel = 2 / canvas.height;
   this.width = width;
@@ -1149,6 +1205,8 @@ WebGLVisualizer.prototype.reset = function() {
   }
   this.position = 0;
   this.effects.wave.model.buffers.height.set(this.height);
+
+  this.dataTime = 0;
   this.dataPos = 0;
   for (var i = 0; i < this.dataWidth; ++i) {
     this.dataBuf[i] = 0;
@@ -1157,6 +1215,16 @@ WebGLVisualizer.prototype.reset = function() {
   gl.texImage2D(
       gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
       gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
+
+  this.sampleTime = 0;
+  this.samplePos = 0;
+  for (var i = 0; i < this.sampleWidth; ++i) {
+    this.sampleBuf[i] = 0;
+  }
+  this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.LUMINANCE, this.sampleWidth, 1, 0,
+      gl.LUMINANCE, gl.UNSIGNED_BYTE, this.sampleBuf);
 };
 
 WebGLVisualizer.prototype.setShaderGLSL = function(effect, vertexShaderSource, fragmentShaderSource) {
@@ -1177,6 +1245,10 @@ WebGLVisualizer.prototype.compileIfPending = function() {
   }
 
   if (this.compileShaderIfPending(this.effects.wave)) {
+    return;
+  }
+
+  if (this.compileShaderIfPending(this.effects.sample)) {
     return;
   }
 
@@ -1233,6 +1305,7 @@ WebGLVisualizer.prototype.handleCompile = function(error, effect, vertexShaderSo
 WebGLVisualizer.prototype.setEffects = function(sections) {
   this.setShaderGLSL(this.effects.wave, sections['glsl-wave-vs'], sections['glsl-wave-fs']);
   this.setShaderGLSL(this.effects.data, this.effects.data[gl.VERTEX_SHADER].defaultSource, sections['glsl-data-fs']);
+  this.setShaderGLSL(this.effects.sample, this.effects.data[gl.VERTEX_SHADER].defaultSource, sections['glsl-sample-fs']);
   this.compileIfPending();
 };
 
@@ -1274,21 +1347,40 @@ WebGLVisualizer.prototype.render = function() {
   var effects = this.effects;
   var wave = this.effects.wave;
   var data = this.effects.data;
+  var sample = this.effects.sample;
 
   var canvas = this.canvas;
   this.resolution[0] = canvas.width;
   this.resolution[1] = canvas.height;
 
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  this.dataPixel[0] = g_byteBeat.functions[0](g_byteBeat.dataTime++) * 127 + 127;
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos++, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
-  this.dataPos = this.dataPos % this.dataWidth;
+  this.dataPixel[0] = g_byteBeat.getSampleForTime(this.dataTime++) * 127 + 127;
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
+  this.dataPos = (this.dataPos + 1) % this.dataWidth;
+
+  this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  for (var ii = 0; ii < 2; ++ii) {
+    this.samplePixel[0] = g_byteBeat.getSampleForTime(this.sampleTime++) * 127 + 127;
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
+    this.samplePos = (this.samplePos + 1) % this.sampleWidth;
+  }
+
   var now = (new Date()).getTime() * 0.001;
 
   data.uniforms.offset = this.dataPos / this.dataWidth;
   data.uniforms.time = now - this.then;
   data.model.drawPrep(data.uniforms);
   data.model.draw();
+
+  if (false) {
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    sample.uniforms.offset = this.samplePos / this.sampleWidth;
+    sample.uniforms.time = now - this.then;
+    sample.model.drawPrep(sample.uniforms);
+    sample.model.draw();
+    gl.disable(gl.BLEND);
+  }
 
   wave.uniforms.position = this.position / this.width;
   wave.uniforms.time = now - this.then;
@@ -1426,8 +1518,29 @@ void main() {
 </script>
 <script id="waveFragmentShader" type="not-js">
 precision mediump float;
+uniform vec4 color;
 void main() {
-  gl_FragColor = vec4(1,0,0,1);
+  gl_FragColor = color;
+}
+</script>
+<script id="sampleVertexShader" type="not-js">
+attribute vec2 position;
+uniform float offset;
+varying vec2 v_texCoord;
+void main() {
+  gl_Position = vec4(position, 0, 1);
+  v_texCoord = vec2(position * 0.5 + 0.5) + vec2(offset, 0);
+}
+</script>
+<script id="sampleFragmentShader" type="not-js">
+precision mediump float;
+varying vec2 v_texCoord;
+uniform sampler2D tex;
+uniform vec4 color;
+void main() {
+  float height = texture2D(tex, v_texCoord).r * 0.5;
+  float m = v_texCoord.y > height ? 0.0 : 1.0;
+  gl_FragColor = color * m;
 }
 </script>
 <script id="dataVertexShader" type="not-js">
@@ -1443,6 +1556,7 @@ void main() {
 precision mediump float;
 varying vec2 v_texCoord;
 uniform sampler2D tex;
+uniform vec4 color;
 void main() {
   int c = int(texture2D(tex, v_texCoord).r * 255.0);
   int y = int(v_texCoord.y * 8.0);
@@ -1450,7 +1564,7 @@ void main() {
   c = c / p;
   float m = mod(float(c), 2.0);
   float line = mod(gl_FragCoord.y, 3.0) / 2.0;
-  gl_FragColor = vec4(0, 0, m * line, m);
+  gl_FragColor = color * m;
 }
 </script>
 </body>
