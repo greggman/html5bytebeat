@@ -144,6 +144,25 @@ option {
   padding: 20px;
   border-radius: 5px;
 }
+#startContainer {
+  display: none;
+  z-index: 1000;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0px;
+  top: 0px;
+  background-color: rgba(0, 0, 0, 0.7);
+  text-align: center;
+  vertical-align: middle;
+}
+#startButton {
+  color: white;
+  font-size: 112pt;
+  background-color: blue;
+  border: 0.2em solid blue;
+  border-radius: 0.2em;
+}
 </style>
 <script>
 tdl.require('tdl.buffers');
@@ -176,6 +195,7 @@ var requestId;
 var compressor;
 var dontSet = true;
 var g_slow = false;
+var g_needUserGesture = false;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -186,6 +206,7 @@ function log(msg) {
 function main() {
   var iOS = ( navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false );
   g_slow = iOS;
+  g_needUserGesture = iOS;
   compressor = new LZMA( "js/lzma_worker.js" );
   canvas = $("visualization");
   controls = $("controls");
@@ -339,6 +360,15 @@ function main() {
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
   playPause();
+  if (g_needUserGesture) {
+    playPause();  // Pause it because play didn't work.
+    var s = $("startContainer");
+    s.style.display = "table";
+    s.addEventListener('click', function() {
+      s.style.display = "none";
+      playPause();
+    }, false);
+  }
 
   function render() {
     if (playing) {
@@ -1072,12 +1102,12 @@ ByteBeat.prototype.getSampleForTime = function(time) {
   return (this.functions[0](time, undefined) & 255) / 127 - 1;
 };
 
-ByteBeat.prototype.startOnIOS = function() {
-  if (!this.startOnIOSCount || this.startOnIOSCount < 2) {
-    this.startOnIOSCount = this.startOnIOSCount || 0;
-    ++this.startOnIOSCount;
-    if (this.startOnIOSCount == 2) {
-      // iOS required starting a sound during a user input event.
+ByteBeat.prototype.startOnUserGesture = function() {
+  if (!this.startOnUserGestureCount || this.startOnUserGestureCount < 2) {
+    this.startOnUserGestureCount = this.startOnUserGestureCount || 0;
+    ++this.startOnUserGestureCount;
+    if (this.startOnUserGestureCount == 2) {
+      // iOS requires starting a sound during a user input event.
       var source = this.context.createOscillator();
       source.frequency.value = 440;
       source.connect(this.context.destination);
@@ -1088,14 +1118,14 @@ ByteBeat.prototype.startOnIOS = function() {
       }
       setTimeout(function() {
         source.disconnect();
-      }, 500);
+      }, 100);
     }
   }
 };
 
 ByteBeat.prototype.play = function() {
   if (this.node) {
-    this.startOnIOS();
+    this.startOnUserGesture();
     this.node.connect(this.context.destination);
   }
 };
@@ -1623,6 +1653,10 @@ NullVisualizer.prototype.render = function() {
     </div>
   </div>
 </div>
+<!-- FUCKING FUCKY CSS FUCK!!! I CAN'T GET IT TO CENTER A DIV! -->
+<table id="startContainer"><tr><td>
+   <span id="startButton">play ▶</span>
+</td/</tr></table>
 <script id="waveVertexShader" type="not-js">
 attribute float column;
 attribute float height;
