@@ -175,6 +175,7 @@ var canvas;
 var requestId;
 var compressor;
 var dontSet = true;
+var g_slow = false;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -183,6 +184,8 @@ function log(msg) {
 }
 
 function main() {
+  var iOS = ( navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false );
+  g_slow = iOS;
   compressor = new LZMA( "js/lzma_worker.js" );
   canvas = $("visualization");
   controls = $("controls");
@@ -281,14 +284,19 @@ function main() {
   compileStatusElem.textContent = "---";
   controls.appendChild(compileStatusElem);
 
-  gl = tdl.webgl.setupWebGL(
-    canvas,
-    { alpha:false,
-      antialias:false,
-      preserveDrawingBuffer:true
-    },
-    function(){});
-  g_visualizer = gl ? new WebGLVisualizer(canvas) : new CanvasVisualizer(canvas);
+  if (g_slow) {
+    g_visualizer = new NullVisualizer();
+  } else {
+    gl = tdl.webgl.setupWebGL(
+      canvas,
+      { alpha:false,
+        antialias:false,
+        preserveDrawingBuffer:true
+      },
+      function(){});
+
+    g_visualizer = gl ? new WebGLVisualizer(canvas) : new CanvasVisualizer(canvas);
+  }
   g_byteBeat.setVisualizer(g_visualizer);
 
   codeElem = $("code");
@@ -524,6 +532,32 @@ function convertBytesToHex(byteArray) {
   return hex;
 }
 
+var nstrip = function(v) {
+  return v;
+}
+
+var replaceRE = /\$\((\w+)\)/g;
+
+/**
+ * Replaces strings with property values.
+ * Given a string like "hello $(first) $(last)" and an object
+ * like {first:"John", last:"Smith"} will return
+ * "hello John Smith".
+ * @param {string} str String to do replacements in
+ * @param {...} 1 or more objects conaining properties.
+ */
+var replaceParams = function(str) {
+  var args = arguments;
+  return str.replace(replaceRE, function(str, p1, offset, s) {
+    for (var ii = 1; ii < args.length; ++ii) {
+      if (args[ii][p1] !== undefined) {
+        return args[ii][p1];
+      }
+    }
+    throw "unknown string param '" + p1 + "'";
+  });
+};
+
 function setURL() {
   if (dontSet) {
     dontSet = false;
@@ -562,6 +596,7 @@ ByteBeat = function() {
     tiltY: 0,
     compass: 0,
   };
+  this.postfixTemplate = $("postfix-template").text;
 
   window.addEventListener('mousemove', function(event) {
     var extra = that.extra;
@@ -722,13 +757,155 @@ ByteBeat.prototype.setOptions = function(sections) {
   this.expandMode = (sections['linear'] !== undefined)
 };
 
-ByteBeat.prototype.setExpressions = function(expressions) {
+ByteBeat.prototype.setExpressions = function(expressions, extra) {
+  var postfixTemplate = this.postfixTemplate;
+
   function removeCommentsAndLineBreaks(x) {
     // remove comments (hacky)
     x = x.replace(/\/\/.*/g, " ");
     x = x.replace(/\n/g, " ");
     x = x.replace(/\/\*.*?\*\//g, " ");
     return x;
+  }
+
+  function expressionStringToFn(x, extra) {
+    x = removeCommentsAndLineBreaks(x);
+    // Translate a few things.
+    function replacer(str, obj, p1, name) {
+      return obj.hasOwnProperty(p1) ? (name + p1) : str;
+    }
+    x = x.replace(/\bint\b/g, "floor");
+    x = x.replace(/(?:Math\.)?(\w+)/g, function(substr, p1) {
+      return replacer(substr, Math, p1, "Math.");
+    });
+    x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
+      return replacer(substr, extra, p1, "extra.");
+    });
+
+    tdl.log(x);
+    var c = "temp = {fn: function() { " + x + " }()}";
+    var f = eval(c).fn;
+
+    for (var i = 0; i < 1000; i += 100) {
+      var s = f(i);
+      if (typeof s != "number") {
+        throw "NaN";
+      }
+    }
+
+    return f;
+  }
+
+  function postfixToInfix(x) {
+    x = removeCommentsAndLineBreaks(x);
+    // compress space
+    x = x.replace(/(\r\n|\r|\n|\t| )+/gm, " ");
+    var tokens = strip(x).split(" ");
+    var stack = [];
+    for (var i = 0; i < tokens.length; ++i) {
+      var token = tokens[i];
+      switch (token.toLowerCase()) {
+      case '>':
+        var v1 = stack.pop();
+        var v2 = stack.pop();
+        stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
+        break;
+      case '<':
+        var v1 = stack.pop();
+        var v2 = stack.pop();
+        stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
+        break;
+      case '=':
+        var v1 = stack.pop();
+        var v2 = stack.pop();
+        stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
+        break;
+      case 'drop':
+        stack.pop();
+        break;
+      case 'dup':
+        var a0 = stack.pop();
+        stack.push(a0);
+        stack.push(a0);
+        break;
+      case 'swap':
+        var a1 = stack.pop();
+        var a0 = stack.pop();
+        stack.push(a1);
+        stack.push(a0);
+        break;
+      case 'pick':
+        var ndx = "pop()";
+        if (stack.length) {
+          ndx = stack.pop();
+        }
+        var array = "";
+        if (stack.length) {
+          array = "(" + stack.join("),(") + ")";
+        }
+        stack.push("getValueFromStack([" + array + "], (" + ndx + "))");
+        break;
+      case 'abs':
+      case 'sqrt':
+      case 'round':
+      case 'tan':
+      case 'log':
+      case 'exp':
+      case 'sin':
+      case 'cos':
+      case 'tan':
+      case 'floor':
+      case 'ceil':
+      case 'int':
+        var a0 = stack.pop();
+        stack.push(token + "(" + a0 + ")");
+        break;
+      case 'max':
+      case 'min':
+      case 'pow':
+        var a0 = stack.pop();
+        var a1 = stack.pop();
+        stack.push(token + "(" + a1 + "," + a0 + ")");
+        break;
+      case 'random':
+        stack.push(token + "()");
+        break;
+      case '/':
+        var a1 = stack.pop();
+        var a0 = stack.pop();
+        stack.push("floor(" + a0 + "/" + a1 + ")");
+        break;
+      case '+':
+      case '-':
+      case '*':
+      case '%':
+      case '>>':
+      case '<<':
+      case '|':
+      case '&':
+      case '^':
+      case '&&':
+      case '||':
+        var a1 = stack.pop();
+        var a0 = stack.pop();
+        stack.push("(" + a0 + token + a1 + ")");
+        break;
+      default:
+        stack.push(token);
+        break;
+      }
+    }
+
+    var exp = [];
+    for (var ii = 0; ii < stack.length; ++ii) {
+      exp.push("push(" + nstrip(stack[ii]) + ");");
+    }
+    exp.push("return " + "pop()" + ";");
+
+    exp = replaceParams(postfixTemplate, {
+      exp: exp.join("\n")
+    });
+    return exp;
   }
 
   function compileExpression(x, expressionType, extra, window) {
@@ -743,118 +920,13 @@ ByteBeat.prototype.setExpressions = function(expressions) {
       expressionType = 1;
     }
     if (expressionType == 1) {  // postfix
-      x = removeCommentsAndLineBreaks(x);
-      // compress space
-      x = x.replace(/(\r\n|\r|\n|\t| )+/gm, " ");
-      var tokens = strip(x).split(" ");
-      var stack = [];
-      for (var i = 0; i < tokens.length; ++i) {
-        var token = tokens[i];
-        switch (token.toLowerCase()) {
-        case '>':
-          var v1 = stack.pop();
-          var v2 = stack.pop();
-          stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
-          break;
-        case '<':
-          var v1 = stack.pop();
-          var v2 = stack.pop();
-          stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
-          break;
-        case '=':
-          var v1 = stack.pop();
-          var v2 = stack.pop();
-          stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
-          break;
-        case 'drop':
-          stack.pop();
-          break;
-        case 'dup':
-          var a0 = stack.pop();
-          stack.push(a0);
-          stack.push(a0);
-          break;
-        case 'swap':
-          var a1 = stack.pop();
-          var a0 = stack.pop();
-          stack.push(a1);
-          stack.push(a0);
-          break;
-        case 'pick':
-          throw ('not implemented');
-          break;
-        case 'abs':
-        case 'sqrt':
-        case 'round':
-        case 'tan':
-        case 'log':
-        case 'exp':
-        case 'sin':
-        case 'cos':
-        case 'tan':
-        case 'floor':
-        case 'ceil':
-        case 'int':
-          var a0 = stack.pop();
-          stack.push(token + "(" + a0 + ")");
-          break;
-        case 'max':
-        case 'min':
-        case 'pow':
-          var a0 = stack.pop();
-          var a1 = stack.pop();
-          stack.push(token + "(" + a1 + "," + a0 + ")");
-          break;
-        case 'random':
-          stack.push(token + "()");
-          break;
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-        case '%':
-        case '>>':
-        case '<<':
-        case '|':
-        case '&':
-        case '^':
-        case '&&':
-        case '||':
-          var a1 = stack.pop();
-          var a0 = stack.pop();
-          stack.push("(" + a0 + token + a1 + ")");
-          break;
-        default:
-          stack.push(token);
-          break;
-        }
-      }
-      x = stack.pop();
+      x = postfixToInfix(x);
+    } else {  // infix
+      x = "  return function(t, i) { " +
+          "    return " + strip(x) + "; " +
+          "  }";
     }
-    x = removeCommentsAndLineBreaks(x);
-    // Translate a few things.
-    function replacer(str, obj, p1, name) {
-      return obj.hasOwnProperty(p1) ? (name + p1) : str;
-    }
-    x = x.replace(/\bint\b/g, "floor");
-    x = x.replace(/(?:Math\.)?(\w+)/g, function(substr, p1) {
-      return replacer(substr, Math, p1, "Math.");
-    });
-    x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
-      return replacer(substr, extra, p1, "extra.");
-    });
-
-    var c = "temp = {fn: function(t, i) { return " + strip(x) + ";}}";
-    var f = eval(c).fn;
-
-    for (var i = 0; i < 1000; i += 100) {
-      var s = f(i);
-      if (typeof s != "number") {
-        throw "NaN";
-      }
-    }
-
-    return f;
+    return expressionStringToFn(x, extra);
   }
 
   var funcs = [];
@@ -1000,8 +1072,30 @@ ByteBeat.prototype.getSampleForTime = function(time) {
   return (this.functions[0](time, undefined) & 255) / 127 - 1;
 };
 
+ByteBeat.prototype.startOnIOS = function() {
+  if (!this.startOnIOSCount || this.startOnIOSCount < 2) {
+    this.startOnIOSCount = this.startOnIOSCount || 0;
+    ++this.startOnIOSCount;
+    if (this.startOnIOSCount == 2) {
+      // iOS required starting a sound during a user input event.
+      var source = this.context.createOscillator();
+      source.frequency.value = 440;
+      source.connect(this.context.destination);
+      if (source.start) {
+        source.start(0);
+      } else if (source.noteOn) {
+        source.noteOn(0);
+      }
+      setTimeout(function() {
+        source.disconnect();
+      }, 500);
+    }
+  }
+};
+
 ByteBeat.prototype.play = function() {
   if (this.node) {
+    this.startOnIOS();
     this.node.connect(this.context.destination);
   }
 };
@@ -1486,6 +1580,27 @@ CanvasVisualizer.prototype.render = function() {
   this.drawCount = 0;
   this.drawPosition = dp;
 };
+
+NullVisualizer = function(canvas) {
+  Visualizer.call(this, canvas);
+};
+
+tdl.base.inherit(NullVisualizer, Visualizer);
+
+NullVisualizer.prototype.resize = function(width, height) {
+};
+
+NullVisualizer.prototype.reset = function() {
+};
+
+NullVisualizer.prototype.setEffects = function(sections) {
+};
+
+NullVisualizer.prototype.update = function(buffer, length) {
+};
+
+NullVisualizer.prototype.render = function() {
+};
 </script>
 </head>
 <body>
@@ -1566,6 +1681,38 @@ void main() {
   float line = mod(gl_FragCoord.y, 3.0) / 2.0;
   gl_FragColor = color * m;
 }
+</script>
+<script type="string" id="postfix-template">
+var stack = [];
+var sp = 0;
+for (var ii = 0; ii < 256; ++ii) {
+  stack.push(0);
+}
+var push = function(v) {
+  stack[sp++] = v;
+  if (sp == 256) {
+    sp = 0;
+  }
+};
+var pop = function() {
+  --sp;
+  if (sp < 0) {
+    sp = 255;
+  }
+  return stack[sp];
+};
+var getValueFromStack = function(liveStack, index) {
+  index = (index + 0x100000000) % 256;
+  if (index < liveStack.length) {
+    return liveStack[index];
+  }
+  index = (0x100000000 + sp - 1 + liveStack.length - index) % 256;
+  return stack[index];
+};
+
+return function(t, i) {
+  $(exp)
+};
 </script>
 </body>
 </html>
