@@ -19,18 +19,25 @@ to Math.sin, Math.cos, Math.tan, Math.floor, Math.ceil, and Math.floor respectiv
 
 Here are a few sample songs
 
-* http://goo.gl/KABRP
+* http://goo.gl/KABRP glitch machine
 * http://goo.gl/V5Mrl
 * http://goo.gl/qrAkf
 * http://goo.gl/w3ugG
 * http://goo.gl/NRwRT
 * http://goo.gl/ObMwR
 * http://goo.gl/Arptn
-* http://goo.gl/pD3lx
-* http://goo.gl/MuQWe
-* http://goo.gl/rFNPL
-* http://goo.gl/lQyDd
-* http://goo.gl/6Uz0d
+* http://goo.gl/pD3lx kb 2011-10-04
+* http://goo.gl/MuQWe ryg 2011-10-10
+* http://goo.gl/rFNPL blueberry 2011-10-05
+* http://goo.gl/lQyDd mu6k
+* http://goo.gl/6Uz0d mix 2 channels
+
+* http://goo.gl/6cC5gK quiddit
+* http://goo.gl/RG8IEk rythymgrind
+* http://goo.gl/QRjRf8 robot toothbrush
+* http://goo.gl/Vk6WPK number machine
+* http://goo.gl/4dOPIJ starlost
+
 
 Instructions
 ------------

@@ -665,8 +665,8 @@ ByteBeat = function() {
     compass: 0,
   };
   this.postfixTemplate = $("postfix-template").text;
-  this.stack = new WrappingStack();
-  this.tempStack = new WrappingStack();
+  this.stacks = [new WrappingStack(), new WrappingStack()];
+  this.tempStack = [new WrappingStack(), new WrappingStack()];
 
   window.addEventListener('mousemove', function(event) {
     var extra = that.extra;
@@ -1064,28 +1064,30 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   //
   var fn0 = this.functions[0];
   var fn1 = this.functions[1];
+  var stack0 = this.stacks[0];
+  var stack1 = this.stacks[1];
   if (fn1) {
     buffer1 = this.buffer1;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  , undefined, this.stack);
-        buffer1[i] = fn1(time++, undefined, this.stack);
+        buffer0[i] = fn0(time  , undefined, stack0);
+        buffer1[i] = fn1(time++, undefined, stack1);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  , undefined, this.stack) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++, undefined, this.stack) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time  , undefined, stack0) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++, undefined, stack1) & 255) / 127 - 1;
       }
     }
   } else {
     buffer1 = this.buffer0;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++, undefined, this.stack);
+        buffer0[i] = fn0(time++, undefined, stack0);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++, undefined, this.stack) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time++, undefined, stack0) & 255) / 127 - 1;
       }
     }
   }
@@ -1131,9 +1133,9 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
 
 ByteBeat.prototype.getSampleForTime = function(time) {
   if (this.floatBeat) {
-    return this.functions[0](time, undefined, this.tempStack);
+    return this.functions[0](time, undefined, this.tempStack[0]);
   }
-  return (this.functions[0](time, undefined, this.tempStack) & 255) / 127 - 1;
+  return (this.functions[0](time, undefined, this.tempStack[0]) & 255) / 127 - 1;
 };
 
 ByteBeat.prototype.startOnUserGesture = function() {
