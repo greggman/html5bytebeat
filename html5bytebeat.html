@@ -604,6 +604,44 @@ function setURL() {
   dummyFunction);
 }
 
+WrappingStack = function(opt_stackSize) {
+  var stackSize = opt_stackSize || 256;
+  var sp = 0;
+  var stack = [];
+  for (var ii = 0; ii < stackSize; ++ii) {
+    stack.push(0);
+  }
+
+  var push = function(v) {
+    stack[sp++] = v;
+    sp = sp % stackSize;
+  };
+
+  var pop = function() {
+    sp = (sp == 0) ? (stackSize - 1) : (sp - 1);
+    return stack[sp];
+  };
+
+  var pick = function(index) {
+    var i = sp - Math.floor(index) - 1;
+    while (i < 0) {
+      i += stackSize;
+    }
+    return stack[i % stackSize];
+  };
+
+  var getSP = function() {
+    return sp;
+  };
+
+  return {
+    pop: pop,
+    push: push,
+    pick: pick,
+    sp: getSP,
+  };
+};
+
 ByteBeat = function() {
   var that = this;
   this.buffer0 = new Float32Array(4096);
@@ -627,6 +665,8 @@ ByteBeat = function() {
     compass: 0,
   };
   this.postfixTemplate = $("postfix-template").text;
+  this.stack = new WrappingStack();
+  this.tempStack = new WrappingStack();
 
   window.addEventListener('mousemove', function(event) {
     var extra = that.extra;
@@ -812,12 +852,17 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       return replacer(substr, extra, p1, "extra.");
     });
 
-    tdl.log(x);
-    var c = "temp = {fn: function() { " + x + " }()}";
+    log(x);
+    var c = "temp = {fn: function(stack) { " + x + " }()}";
     var f = eval(c).fn;
 
+    var stack = new WrappingStack();
     for (var i = 0; i < 1000; i += 100) {
-      var s = f(i);
+      var s = f(i, i, stack);
+      if (i == 0) {
+        log("stack: " + stack.sp());
+      }
+      //log("" + i + ": " + s);
       if (typeof s != "number") {
         throw "NaN";
       }
@@ -831,49 +876,42 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     // compress space
     x = x.replace(/(\r\n|\r|\n|\t| )+/gm, " ");
     var tokens = strip(x).split(" ");
-    var stack = [];
+    var steps = [];
     for (var i = 0; i < tokens.length; ++i) {
       var token = tokens[i];
       switch (token.toLowerCase()) {
       case '>':
-        var v1 = stack.pop();
-        var v2 = stack.pop();
-        stack.push("((" + v2 + " < " + v1 + ") ? 0xFFFFFFFF : 0)");
+        steps.push("var v1 = stack.pop();");
+        steps.push("var v2 = stack.pop();");
+        steps.push("stack.push((v2 < v1) ? 0xFFFFFFFF : 0);");
         break;
       case '<':
-        var v1 = stack.pop();
-        var v2 = stack.pop();
-        stack.push("((" + v2 + " > " + v1 + ") ? 0xFFFFFFFF : 0)");
+        steps.push("var v1 = stack.pop();");
+        steps.push("var v2 = stack.pop();");
+        steps.push("stack.push((v2 > v1) ? 0xFFFFFFFF : 0);");
         break;
       case '=':
-        var v1 = stack.pop();
-        var v2 = stack.pop();
-        stack.push("((" + v2 + " == " + v1 + ") ? 0xFFFFFFFF : 0)");
+        steps.push("var v1 = stack.pop();");
+        steps.push("var v2 = stack.pop();");
+        steps.push("stack.push((v2 == v1) ? 0xFFFFFFFF : 0);");
         break;
       case 'drop':
-        stack.pop();
+        steps.push("stack.pop();");
         break;
       case 'dup':
-        var a0 = stack.pop();
-        stack.push(a0);
-        stack.push(a0);
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(a0);");
+        steps.push("stack.push(a0);");
         break;
       case 'swap':
-        var a1 = stack.pop();
-        var a0 = stack.pop();
-        stack.push(a1);
-        stack.push(a0);
+        steps.push("var a1 = stack.pop();");
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(a1);");
+        steps.push("stack.push(a0);");
         break;
       case 'pick':
-        var ndx = "pop()";
-        if (stack.length) {
-          ndx = stack.pop();
-        }
-        var array = "";
-        if (stack.length) {
-          array = "(" + stack.join("),(") + ")";
-        }
-        stack.push("getValueFromStack([" + array + "], (" + ndx + "))");
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(stack.pick(a0));");
         break;
       case 'abs':
       case 'sqrt':
@@ -887,23 +925,23 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       case 'floor':
       case 'ceil':
       case 'int':
-        var a0 = stack.pop();
-        stack.push(token + "(" + a0 + ")");
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(" + token + "(a0));");
         break;
       case 'max':
       case 'min':
       case 'pow':
-        var a0 = stack.pop();
-        var a1 = stack.pop();
-        stack.push(token + "(" + a1 + "," + a0 + ")");
+        steps.push("var a0 = stack.pop();");
+        steps.push("var a1 = stack.pop();");
+        steps.push("stack.push(" + token + "(a1, a0));");
         break;
       case 'random':
-        stack.push(token + "()");
+        steps.push("stack.push(" + token + "());");
         break;
       case '/':
-        var a1 = stack.pop();
-        var a0 = stack.pop();
-        stack.push("floor(" + a0 + "/" + a1 + ")");
+        steps.push("var a1 = stack.pop();");
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(floor(a0 / a1));");
         break;
       case '+':
       case '-':
@@ -916,24 +954,20 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       case '^':
       case '&&':
       case '||':
-        var a1 = stack.pop();
-        var a0 = stack.pop();
-        stack.push("(" + a0 + token + a1 + ")");
+        steps.push("var a1 = stack.pop();");
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(a0 " + token + " a1);");
         break;
       default:
-        stack.push(token);
+        steps.push("stack.push(" + token + ");");
         break;
       }
     }
 
-    var exp = [];
-    for (var ii = 0; ii < stack.length; ++ii) {
-      exp.push("push(" + nstrip(stack[ii]) + ");");
-    }
-    exp.push("return " + "pop()" + ";");
+    steps.push("return stack.pick(0);");
 
-    exp = replaceParams(postfixTemplate, {
-      exp: exp.join("\n")
+    var exp = replaceParams(postfixTemplate, {
+      exp: steps.join("\n")
     });
     return exp;
   }
@@ -1034,24 +1068,24 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
     buffer1 = this.buffer1;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  , undefined);
-        buffer1[i] = fn1(time++, undefined);
+        buffer0[i] = fn0(time  , undefined, this.stack);
+        buffer1[i] = fn1(time++, undefined, this.stack);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  , undefined) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++, undefined) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time  , undefined, this.stack) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++, undefined, this.stack) & 255) / 127 - 1;
       }
     }
   } else {
     buffer1 = this.buffer0;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++, undefined);
+        buffer0[i] = fn0(time++, undefined, this.stack);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++, undefined) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time++, undefined, this.stack) & 255) / 127 - 1;
       }
     }
   }
@@ -1097,9 +1131,9 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
 
 ByteBeat.prototype.getSampleForTime = function(time) {
   if (this.floatBeat) {
-    return this.functions[0](time, undefined);
+    return this.functions[0](time, undefined, this.tempStack);
   }
-  return (this.functions[0](time, undefined) & 255) / 127 - 1;
+  return (this.functions[0](time, undefined, this.tempStack) & 255) / 127 - 1;
 };
 
 ByteBeat.prototype.startOnUserGesture = function() {
@@ -1717,34 +1751,7 @@ void main() {
 }
 </script>
 <script type="string" id="postfix-template">
-var stack = [];
-var sp = 0;
-for (var ii = 0; ii < 256; ++ii) {
-  stack.push(0);
-}
-var push = function(v) {
-  stack[sp++] = v;
-  if (sp == 256) {
-    sp = 0;
-  }
-};
-var pop = function() {
-  --sp;
-  if (sp < 0) {
-    sp = 255;
-  }
-  return stack[sp];
-};
-var getValueFromStack = function(liveStack, index) {
-  index = (index + 0x100000000) % 256;
-  if (index < liveStack.length) {
-    return liveStack[index];
-  }
-  index = (0x100000000 + sp - 1 + liveStack.length - index) % 256;
-  return stack[index];
-};
-
-return function(t, i) {
+return function(t, i, stack) {
   $(exp)
 };
 </script>
