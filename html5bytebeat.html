@@ -883,12 +883,12 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       case '>':
         steps.push("var v1 = stack.pop();");
         steps.push("var v2 = stack.pop();");
-        steps.push("stack.push((v2 < v1) ? 0xFFFFFFFF : 0);");
+        steps.push("stack.push((v1 < v2) ? 0xFFFFFFFF : 0);");
         break;
       case '<':
         steps.push("var v1 = stack.pop();");
         steps.push("var v2 = stack.pop();");
-        steps.push("stack.push((v2 > v1) ? 0xFFFFFFFF : 0);");
+        steps.push("stack.push((v1 > v2) ? 0xFFFFFFFF : 0);");
         break;
       case '=':
         steps.push("var v1 = stack.pop();");
@@ -899,9 +899,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
         steps.push("stack.pop();");
         break;
       case 'dup':
-        steps.push("var a0 = stack.pop();");
-        steps.push("stack.push(a0);");
-        steps.push("stack.push(a0);");
+        steps.push("stack.push(stack.pick(0));");
         break;
       case 'swap':
         steps.push("var a1 = stack.pop();");
