@@ -36,7 +36,7 @@ Here are a few sample songs
 * http://goo.gl/QRjRf8 robot toothbrush
 * http://goo.gl/Vk6WPK number machine
 * http://goo.gl/4dOPIJ starlost
-
+* http://goo.gl/VHm5c7 guitarhead
 
 Instructions
 ------------
