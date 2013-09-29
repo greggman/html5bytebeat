@@ -77,7 +77,7 @@ These can be prefixed with glitch:. For example
     glitch:rolling!a9da4kl!a5da7kl!a3da400el!mm1g
 
 <a href="https://github.com/erlehmann/libglitch/tree/master/tracks">There's
-a bunch more here. I have a feeling there's a bug or 2 left for full glitch support
+a bunch more here</a>. I have a feeling there's a bug or 2 left for full glitch support
 
 
 ### Extra
