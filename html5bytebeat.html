@@ -630,6 +630,14 @@ WrappingStack = function(opt_stackSize) {
     return stack[i % stackSize];
   };
 
+  var put = function(index, value) {
+    i = sp - Math.floor(index);
+    while (i < 0) {
+      i += stackSize;
+    }
+    stack[i % stackSize] = value;
+  };
+
   var getSP = function() {
     return sp;
   };
@@ -638,6 +646,7 @@ WrappingStack = function(opt_stackSize) {
     pop: pop,
     push: push,
     pick: pick,
+    put: put,
     sp: getSP,
   };
 };
@@ -790,6 +799,7 @@ ByteBeat.prototype.getTime = function() {
 
 var g_glitchToPostfix = {
     'a': 't',
+    'b': 'put',
     'c': 'drop',
 
     'd': '*',
@@ -912,6 +922,11 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       case 'pick':
         steps.push("var a0 = stack.pop();");
         steps.push("stack.push(stack.pick(a0));");
+        break;
+      case 'put':
+        steps.push("var a0 = stack.pop();");
+        steps.push("var a1 = stack.pick(0);");
+        steps.push("stack.put(a0, a1);");
         break;
       case 'abs':
       case 'sqrt':
