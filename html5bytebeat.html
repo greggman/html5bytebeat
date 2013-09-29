@@ -797,36 +797,86 @@ ByteBeat.prototype.getTime = function() {
   return this.convertToDesiredSampleRate(this.time);
 };
 
-var g_glitchToPostfix = {
-    'a': 't',
-    'b': 'put',
-    'c': 'drop',
+function removeCommentsAndLineBreaks(x) {
+  // remove comments (hacky)
+  x = x.replace(/\/\/.*/g, " ");
+  x = x.replace(/\n/g, " ");
+  x = x.replace(/\/\*.*?\*\//g, " ");
+  return x;
+}
 
-    'd': '*',
-    'e': '/',
-    'f': '+',
-    'g': '-',
-    'h': '%',
+var glitchToPostfix = (function() {
+  var glitchToPostfixConversion = {
+      'a': 't',
+      'b': 'put',
+      'c': 'drop',
 
-    'j': '<<',
-    'k': '>>',
-    'l': '&',
-    'm': '|',
-    'n': '^',
-    'o': '~',
+      'd': '*',
+      'e': '/',
+      'f': '+',
+      'g': '-',
+      'h': '%',
 
-    'p': 'dup',
-    'q': 'pick',
-    'r': 'swap',
+      'j': '<<',
+      'k': '>>',
+      'l': '&',
+      'm': '|',
+      'n': '^',
+      'o': '~',
 
-    's': '<',
-    't': '>',
-    'u': '=',
-    '/': '//',
+      'p': 'dup',
+      'q': 'pick',
+      'r': 'swap',
 
-    '!': ' ',
-    '.': ' ',
-};
+      's': '<',
+      't': '>',
+      'u': '=',
+      '/': '//',
+
+      '!': '\n',
+      '.': ' ',
+  };
+
+  var isCapitalHex = function(c) {
+    return ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F'));
+  };
+
+  return function(x) {
+    // Convert to postfix
+    var postfix = [];
+
+    x = x.replace("glitch://", ""); // remove "glitch:"
+    x = removeCommentsAndLineBreaks(x);
+    x = x.replace("glitch:", ""); // remove "glitch:"
+    x = x.replace(/^[^!]*!/, ""); // remove label
+
+    for (var i = 0; i < x.length; ++i) {
+      var done = false;
+      var imd = "";
+
+      // NOTE: works by magic when number is at end. While gathering
+      // imd if we're at the end of the string 'c' will be undefined
+      // which will fail isCapitalHex and so the last imd will be put in
+      // correctly.
+      while (!done) {
+        var c = x[i];
+        if (isCapitalHex(c)) {
+          imd = imd + c;
+          ++i;
+        } else {
+          done = true;
+          if (imd.length) {
+            --i;
+            c = "0x" + imd;
+          }
+        }
+      }
+      postfix.push(glitchToPostfixConversion[c] || c);
+    }
+    return postfix.join(" ");
+  };
+
+}());
 
 ByteBeat.prototype.setOnCompile = function(callback) {
   this.onCompileCallback = callback;
@@ -842,14 +892,6 @@ ByteBeat.prototype.setOptions = function(sections) {
 
 ByteBeat.prototype.setExpressions = function(expressions, extra) {
   var postfixTemplate = this.postfixTemplate;
-
-  function removeCommentsAndLineBreaks(x) {
-    // remove comments (hacky)
-    x = x.replace(/\/\/.*/g, " ");
-    x = x.replace(/\n/g, " ");
-    x = x.replace(/\/\*.*?\*\//g, " ");
-    return x;
-  }
 
   function expressionStringToFn(x, extra) {
     x = removeCommentsAndLineBreaks(x);
@@ -992,43 +1034,9 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     return exp;
   }
 
-  function isCapitalHex(c) {
-    return ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F'));
-  }
-
   function compileExpression(x, expressionType, extra, window) {
     if (expressionType == 2) { // glitch
-      // Convert to postfix
-      var postfix = [];
-
-      x = removeCommentsAndLineBreaks(x);
-      x = x.replace("glitch:", ""); // remove "glitch:"
-      x = x.replace(/^[^!]*!/, ""); // remove label
-
-      for (var i = 0; i < x.length; ++i) {
-        var done = false;
-        var imd = "";
-
-        // NOTE: works by magic when number is at end. While gathering
-        // imd if we're at the end of the string 'c' will be undefined
-        // which will fail isCapitalHex and so the last imd will be put in
-        // correctly.
-        while (!done) {
-          var c = x[i];
-          if (isCapitalHex(c)) {
-            imd = imd + c;
-            ++i;
-          } else {
-            done = true;
-            if (imd.length) {
-              --i;
-              c = "0x" + imd;
-            }
-          }
-        }
-        postfix.push(g_glitchToPostfix[c] || c);
-      }
-      x = postfix.join(" ");
+      x = glitchToPostfix(x);
       expressionType = 1;
     }
     if (expressionType == 1) {  // postfix
