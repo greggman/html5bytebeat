@@ -962,7 +962,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       }
     }
 
-    steps.push("return stack.pick(0);");
+    steps.push("return stack.pop();");
 
     var exp = replaceParams(postfixTemplate, {
       exp: steps.join("\n")
