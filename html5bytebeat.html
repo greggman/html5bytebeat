@@ -273,8 +273,8 @@ function main() {
   }, false);
   controls.appendChild(beatTypeElem);
 
-  //expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch"], 0);
-  expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
+  expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch"], 0);
+  //expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
     g_byteBeat.recompile();
@@ -813,6 +813,8 @@ var g_glitchToPostfix = {
     't': '>',
     'u': '=',
     '/': '//',
+
+    '!': ' ',
 };
 
 ByteBeat.prototype.setOnCompile = function(callback) {
@@ -956,6 +958,10 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
         steps.push("var a0 = stack.pop();");
         steps.push("stack.push(a0 " + token + " a1);");
         break;
+      case '~':
+        steps.push("var a0 = stack.pop();");
+        steps.push("stack.push(~a0);");
+        break;
       default:
         steps.push("stack.push(" + token + ");");
         break;
@@ -970,12 +976,40 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     return exp;
   }
 
+  function isCapitalHex(c) {
+    return ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F'));
+  }
+
   function compileExpression(x, expressionType, extra, window) {
     if (expressionType == 2) { // glitch
       // Convert to postfix
       var postfix = [];
+
+      x = removeCommentsAndLineBreaks(x);
+      x = x.replace("glitch:", ""); // remove "glitch:"
+      x = x.replace(/^[^!]*!/, ""); // remove label
+
       for (var i = 0; i < x.length; ++i) {
-        var c = x[i];
+        var done = false;
+        var imd = "";
+
+        // NOTE: works by magic when number is at end. While gathering
+        // imd if we're at the end of the string 'c' will be undefined
+        // which will fail isCapitalHex and so the last imd will be put in
+        // correctly.
+        while (!done) {
+          var c = x[i];
+          if (isCapitalHex(c)) {
+            imd = imd + c;
+            ++i;
+          } else {
+            done = true;
+            if (imd.length) {
+              --i;
+              c = "0x" + imd;
+            }
+          }
+        }
         postfix.push(g_glitchToPostfix[c] || c);
       }
       x = postfix.join(" ");

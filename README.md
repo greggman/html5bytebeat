@@ -51,6 +51,7 @@ There 2 modes
 ### Expression Types
 * Infix: Standard expressions eg. "(t * 2) / 4"
 * Postfix(rpn): Reverse Polish Notation eg "t 2 * 4 /"
+* glitch: glitch format or glitch urls.
 
 **Infix** is standard JavaScript so all Math functions are available.
 Most math functions you can drop the "Math." part. In other words
@@ -65,6 +66,19 @@ is the same as
 
     t2*    // BAD!
     t 2 *  // Good!
+
+**Glitch** is a format used by glitch machine for sharing. Examples
+
+    glitch_machine!a10k4h1f!aAk5h2ff!aCk3hg!ad3e!p!9fm!a4kl13f!aCk7Fhn
+    octo!a2k14had!a2000he!a8!a11k3h1fde!m!aEk7Fhn!20g
+
+These can be prefixed with glitch:. For example
+
+    glitch:rolling!a9da4kl!a5da7kl!a3da400el!mm1g
+
+<a href="https://github.com/erlehmann/libglitch/tree/master/tracks">There's
+a bunch more here. I have a feeling there's a bug or 2 left for full glitch support
+
 
 ### Extra
 
