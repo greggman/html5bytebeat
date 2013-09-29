@@ -69,12 +69,12 @@ is the same as
 
 **Glitch** is a format used by glitch machine for sharing. Examples
 
-    <a href="http://goo.gl/5hLhys">42_forever!a13880fa400he!a5kma6kn40g!aCk28!a12k1ld!2fladm!43n</a>
-    <a href="http://goo.gl/xcvE2x">pipe_symphony!aEk5h5f!a11k2h!a9k3hdf!aDk4hg!ad4e!p5fm!a11k2h1rg!a5kdm</a>
+* <a href="http://goo.gl/5hLhys">42_forever!a13880fa400he!a5kma6kn40g!aCk28!a12k1ld!2fladm!43n</a>
+* <a href="http://goo.gl/xcvE2x">pipe_symphony!aEk5h5f!a11k2h!a9k3hdf!aDk4hg!ad4e!p5fm!a11k2h1rg!a5kdm</a>
 
 These can be prefixed with "glitch://". For example
 
-    <a href="http://goo.gl/0PfWZ5">glitch://sadglitch!4.4.9.8.9.6.4.2!aoCk8hq!ad2d!aFk3h1fe!p5d3em!a63hm!a7kFFlp80slf</a>
+* <a href="http://goo.gl/0PfWZ5">glitch://sadglitch!4.4.9.8.9.6.4.2!aoCk8hq!ad2d!aFk3h1fe!p5d3em!a63hm!a7kFFlp80slf</a>
 
 <a href="https://github.com/erlehmann/libglitch/tree/master/tracks">There's
 a bunch more here</a>. I have a feeling there's a bug or 2 left for full glitch support
