@@ -698,9 +698,10 @@ ByteBeat = function() {
     }, false);
   }
 
-  if (window.webkitAudioContext) {
-    this.context = new webkitAudioContext();
-    this.node = this.context.createJavaScriptNode(4096, 2, 2);
+  var webAudioAPI = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.oAudioContext || window.msAudioContext;
+  if (webAudioAPI) {
+    this.context = new webAudioAPI();
+    this.node = this.context.createScriptProcessor(4096, 2, 2);
     //this.context = { };
     //this.node = {
     //  connect: function() { },
@@ -1205,8 +1206,6 @@ ByteBeat.prototype.startOnUserGesture = function() {
       source.connect(this.context.destination);
       if (source.start) {
         source.start(0);
-      } else if (source.noteOn) {
-        source.noteOn(0);
       }
       setTimeout(function() {
         source.disconnect();
