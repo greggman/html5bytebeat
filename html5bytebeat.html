@@ -998,10 +998,6 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
         steps.push("stack.push(" + token + "());");
         break;
       case '/':
-        steps.push("var a1 = stack.pop();");
-        steps.push("var a0 = stack.pop();");
-        steps.push("stack.push(floor(a0 / a1));");
-        break;
       case '+':
       case '-':
       case '*':
@@ -1015,7 +1011,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       case '||':
         steps.push("var a1 = stack.pop();");
         steps.push("var a0 = stack.pop();");
-        steps.push("stack.push(a0 " + token + " a1);");
+        steps.push("stack.push((a0 " + token + " a1) | 0);");
         break;
       case '~':
         steps.push("var a0 = stack.pop();");
