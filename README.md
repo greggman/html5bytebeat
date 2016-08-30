@@ -97,8 +97,8 @@ like. It works with a stack. Each command either adds things to the stack or use
               // stack                                 stack = 569
 
 Note the stack is only 256 elements deep. If you push 257 elements it wraps around. Similary if you use `pick`
-with a large value your pick will wrap around. The static is neither cleared nor reset on each iteration
-of your function. Some postfix based bytebeat songs take advantage of this were each iteration leaves
+with a large value your pick will wrap around. The stack is neither cleared nor reset on each iteration
+of your function. Some postfix based bytebeat songs take advantage of this where each iteration leaves
 things on the stack for the next iteration.
 
 The postfix operators are
@@ -154,7 +154,7 @@ In other words `4 2 /` is 4 divided by 2.
 
 `~`
 
-Pops the top of the static, applies the binary negate to it, pushes the result.
+Pops the top of the stack, applies the binary negate to it, pushes the result.
 
 ### Extra
 
@@ -172,9 +172,7 @@ The orientation of a device may be available as `tiltX` and `tiltY`.
 
     (sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
 
-Also note, using the comma operator you can write fairly arbitrary code.
-
-    http://goo.gl/IZVBS
+Also note, using the comma operator you can write fairly arbitrary code. [See this example](http://goo.gl/IZVBS).
 
 For more info
 -------------
