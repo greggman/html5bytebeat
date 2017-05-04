@@ -87,7 +87,7 @@ a bunch more here</a>. I have a feeling there's a bug or 2 left for full glitch 
 
 ### Postfix
 
-Postfix in this case I guess can be described as [forth](http://en.wikipedia.org/wiki/Forth_(programming_language)
+Postfix in this case I guess can be described as [forth](http://en.wikipedia.org/wiki/Forth_(programming_language))
 like. It works with a stack. Each command either adds things to the stack or uses what's on the stack to do something. For example
 
     123       // pushes 123 on the stack               stack = 123
@@ -106,8 +106,8 @@ The postfix operators are
 `>`, `<` ,`=`
 
 These take the top two things from the stack, do the comparision, then push 0xFFFFFFFF if the result
-is true or 0x0 if the result is false.  Is the TOP thing on the stack `>`, `<`, `=` the next thing
-on the stack.
+is true or 0x0 if the result is false. Think of it has follows: If the TOP thing on the stack is `>`, `<`, or `=` to 
+the next thing on the stack then 0xFFFFFFFF else 0x0
 
 `drop`
 
@@ -123,7 +123,7 @@ swaps the top 2 things on the stack
 
 `pick`
 
-pops the top thing from the stack and duplicates that many items back. In other words
+pops the top thing from the stack and duplicates one item that many items back. In other words
 if the stack is `1,2,3,4,5,6,7,3` then `pick` pops the top thing `3` and duplicates
 the 3rd thing back counting from 0, which is no `4`. The stack is then `1,2,3,4,5,6,7,4`.
 
