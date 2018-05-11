@@ -195,7 +195,6 @@ var requestId;
 var compressor;
 var dontSet = true;
 var g_slow = false;
-var g_needUserGesture = false;
 
 function log(msg) {
   if (window.console && window.console.log) {
@@ -206,7 +205,6 @@ function log(msg) {
 function main() {
   var iOS = ( navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false );
   g_slow = iOS;
-  g_needUserGesture = iOS;
   compressor = new LZMA( "js/lzma_worker.js" );
   canvas = $("visualization");
   controls = $("controls");
@@ -359,14 +357,12 @@ function main() {
 
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
-  playPause();
-  if (g_needUserGesture) {
-    playPause();  // Pause it because play didn't work.
+  {
     var s = $("startContainer");
     s.style.display = "table";
     s.addEventListener('click', function() {
       s.style.display = "none";
-      playPause();
+      g_byteBeat.resume(playPause);
     }, false);
   }
 
@@ -792,6 +788,15 @@ ByteBeat.prototype.setVisualizer = function(visualizer) {
 
 ByteBeat.prototype.reset = function() {
   this.time = 0;
+};
+
+ByteBeat.prototype.resume = function(callback) {
+  if (this.context.resume) {
+    console.log("called resume");
+    this.context.resume().then(callback);
+  } else {
+    callback();
+  }
 };
 
 ByteBeat.prototype.getTime = function() {
