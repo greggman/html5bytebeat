@@ -34,6 +34,7 @@
 <meta charset="utf-8">
 <title>HTML5 Bytebeat</title>
 <script src="js/lzma.js"></script>
+<script src="js/wavmaker.js"></script>
 <!-- comment out 1st line and comment in 2nd to use non minified tdl -->
 <script type="text/javascript" src="js/tdl/tdl-min.js"></script>
 <!-- <script type="text/javascript" src="tdl/base.js"></script> -->
@@ -143,6 +144,15 @@ option {
   background-color: #888;
   padding: 20px;
   border-radius: 5px;
+}
+#saveform .settings {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+input {
+   background: #444;
+   color: white;
+   border: none;
 }
 #startContainer {
   display: none;
@@ -292,12 +302,10 @@ function main() {
   }, false);
   controls.appendChild(visualTypeElem);
 
-  if (false) {
-    saveElem = document.createElement("button");
-    saveElem.textContent = "save";
-    saveElem.addEventListener('click', startSave);
-    controls.appendChild(saveElem);
-  }
+  saveElem = document.createElement("button");
+  saveElem.textContent = "save";
+  saveElem.addEventListener('click', startSave);
+  controls.appendChild(saveElem);
 
   compileStatusElem = document.createElement('button');
   compileStatusElem.textContent = "---";
@@ -344,6 +352,13 @@ function main() {
           codeElem.focus();
       }
   }, false);
+
+  window.addEventListener('keydown', function(event){
+      if ((event.ctrlKey || event.metaKey) && event.keyCode == 83) {
+          event.preventDefault();
+          startSave();
+      }
+  });
 
   g_byteBeat.setOnCompile(handleCompileError);
   g_visualizer.setOnCompile(handleCompileError);
@@ -463,9 +478,58 @@ function showSaveDialog() {
       closeSave()
     }
   }
+  const saveData = (function() {
+    const a = document.createElement('a');
+    document.body.appendChild(a);
+    a.style.display = 'none';
+    return function saveData(blob, fileName) {
+      const url = window.URL.createObjectURL(blob);
+      a.href = url;
+      a.download = fileName;
+      a.click();
+    };
+  }());
+
+  function wait(ms = 0) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
+
   function save() {
-    log("do something to save");
-    closeSave();
+    async function realSave() {
+      const numSeconds = parseFloat($('seconds').value);
+      if (numSeconds > 0) {
+        const wasPlaying = playing;
+        if (playing) {
+          g_byteBeat.pause();
+        }
+        // there are issues where. The stack should be
+        // reset if nothing else.
+        const sampleRate = g_byteBeat.getDesiredSampleRate();
+        const numSamplesNeeded = sampleRate * numSeconds | 0;
+        const numChannels = 1;
+        const wavMaker = new WavMaker(sampleRate, numChannels);
+        for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
+          const start = i;
+          const end = Math.min(i + sampleRate, numSamplesNeeded);
+          const output = new Float32Array(end - start);
+          for (let j = start; j < end; ++j) {
+            const s = g_byteBeat.getSampleForTime(j);
+            output[j - i] = s;
+          }
+          wavMaker.addData([output]);
+          await wait();
+        }
+        const blob = wavMaker.getWavBlob();
+        saveData(blob, "html5bytebeat.wav");
+        if (wasPlaying) {
+          g_byteBeat.play();
+        }
+      }
+      closeSave();
+    }
+    realSave();
   }
 
   window.addEventListener('keypress', handleKeyPress);
@@ -1190,10 +1254,8 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
 };
 
 ByteBeat.prototype.getSampleForTime = function(time) {
-  if (this.floatBeat) {
-    return this.functions[0](time, undefined, this.tempStack[0]);
-  }
-  return (this.functions[0](time, undefined, this.tempStack[0]) & 255) / 127 - 1;
+  const s = this.functions[0](time, undefined, this.tempStack[0]);
+  return this.floatBeat ? s : (s & 255) / 127 - 1;
 };
 
 ByteBeat.prototype.startOnUserGesture = function() {
@@ -1740,6 +1802,9 @@ NullVisualizer.prototype.render = function() {
     <div id="saveform">
       <div>
         <img id="screenshot" />
+      </div>
+      <div class="settings">
+        <div> seconds: <input id="seconds" type="number" value="30" min="0" max="10000"></div>
       </div>
       <div><button id="save">save</button><button id="cancel">cancel</button></div>
     </div>
