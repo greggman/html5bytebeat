@@ -508,17 +508,22 @@ function showSaveDialog() {
         // reset if nothing else.
         const sampleRate = g_byteBeat.getDesiredSampleRate();
         const numSamplesNeeded = sampleRate * numSeconds | 0;
-        const numChannels = 1;
+        const numChannels = 2;
         const wavMaker = new WavMaker(sampleRate, numChannels);
         for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
           const start = i;
           const end = Math.min(i + sampleRate, numSamplesNeeded);
-          const output = new Float32Array(end - start);
+          const output = [
+            new Float32Array(end - start),
+            new Float32Array(end - start),
+          ];
           for (let j = start; j < end; ++j) {
-            const s = g_byteBeat.getSampleForTime(j);
-            output[j - i] = s;
+            for (let ch = 0; ch < numChannels; ++ch) {
+              const s = g_byteBeat.getSampleForTime(j, ch);
+              output[ch][j - i] = s;
+            }
           }
-          wavMaker.addData([output]);
+          wavMaker.addData(output);
           await wait();
         }
         const blob = wavMaker.getWavBlob();
@@ -1218,7 +1223,7 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
     var ndx = 0;
 
     function interp(buf) {
-      var n = Math.floor(ndx);
+      var n = ndx | 0;
       var f = ndx % 1;
       var v0 = buf[n];
       var v1 = buf[n + 1];
@@ -1226,7 +1231,7 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
     }
 
     function trunc(buf) {
-      return buf[Math.floor(ndx)];
+      return buf[ndx | 0];
     }
 
     var expandFn = this.expandMode ? interp : trunc;
@@ -1253,8 +1258,11 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   this.time += dataLength;
 };
 
-ByteBeat.prototype.getSampleForTime = function(time) {
-  const s = this.functions[0](time, undefined, this.tempStack[0]);
+ByteBeat.prototype.getSampleForTime = function(time, channel = 0) {
+  if (!this.functions[1]) {
+    channel = 0;
+  }
+  const s = this.functions[channel](time, undefined, this.tempStack[0]);
   return this.floatBeat ? s : (s & 255) / 127 - 1;
 };
 
