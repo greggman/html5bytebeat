@@ -36,8 +36,8 @@
 <script src="js/lzma.js"></script>
 <script src="js/wavmaker.js"></script>
 <!-- comment out 1st line and comment in 2nd to use non minified tdl -->
-<script type="text/javascript" src="js/tdl/tdl-min.js"></script>
-<!-- <script type="text/javascript" src="tdl/base.js"></script> -->
+<script src="js/tdl/tdl-min.js"></script>
+<!-- <script src="tdl/base.js"></script> -->
 <style>
 html, body {
     width: 100%;
@@ -175,6 +175,13 @@ input {
 }
 </style>
 <script>
+function evalHelper(s) {
+  return eval(s);
+}
+</script>
+<script>
+'use strict';
+
 tdl.require('tdl.buffers');
 tdl.require('tdl.fast');
 tdl.require('tdl.models');
@@ -200,9 +207,20 @@ var gl;
 var playing = false;
 var play;
 var codeElem;
+var helpElem;
+var timeElem;
+var playElem;
+var byteBeatElem;
+var beatTypeElem;
+var expressionTypeElem;
+var sampleRateElem;
+var visualTypeElem;
+var saveElem;
+var compileStatusElem;
 var canvas;
 var requestId;
 var compressor;
+var controls;
 var dontSet = true;
 var g_slow = false;
 
@@ -264,7 +282,7 @@ function main() {
   function addSelection(options, selectedIndex) {
     var select = document.createElement('select');
     for (var i = 0; i < options.length; ++i) {
-      option = document.createElement('option');
+      var option = document.createElement('option');
       option.textContent = options[i];
       if (i == selectedIndex) {
         option.selected = true;
@@ -510,6 +528,8 @@ function showSaveDialog() {
         const numSamplesNeeded = sampleRate * numSeconds | 0;
         const numChannels = 2;
         const wavMaker = new WavMaker(sampleRate, numChannels);
+        const context = ByteBeat.makeContext();
+        const stack = new WrappingStack();
         for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
           const start = i;
           const end = Math.min(i + sampleRate, numSamplesNeeded);
@@ -519,7 +539,7 @@ function showSaveDialog() {
           ];
           for (let j = start; j < end; ++j) {
             for (let ch = 0; ch < numChannels; ++ch) {
-              const s = g_byteBeat.getSampleForTime(j, ch);
+              const s = g_byteBeat.getSampleForTime(j, context, stack, ch);
               output[ch][j - i] = s;
             }
           }
@@ -669,7 +689,7 @@ function setURL() {
   dummyFunction);
 }
 
-WrappingStack = function(opt_stackSize) {
+function WrappingStack(opt_stackSize) {
   var stackSize = opt_stackSize || 256;
   var sp = 0;
   var stack = [];
@@ -716,7 +736,7 @@ WrappingStack = function(opt_stackSize) {
   };
 };
 
-ByteBeat = function() {
+function ByteBeat() {
   var that = this;
   this.buffer0 = new Float32Array(4096);
   this.buffer1 = new Float32Array(4096);
@@ -728,6 +748,7 @@ ByteBeat = function() {
   this.functions = [function(t) {
     return Math.sin(t) * 0.1;
   }]
+  this.contexts = [ByteBeat.makeContext(), ByteBeat.makeContext()];
   this.expressions = ["Math.sin(t) * 0.1"];
   this.extra = {
     mouseX: 0,
@@ -740,7 +761,6 @@ ByteBeat = function() {
   };
   this.postfixTemplate = $("postfix-template").text;
   this.stacks = [new WrappingStack(), new WrappingStack()];
-  this.tempStack = [new WrappingStack(), new WrappingStack()];
 
   window.addEventListener('mousemove', function(event) {
     var extra = that.extra;
@@ -845,6 +865,17 @@ ByteBeat = function() {
 function strip(s) {
   return s.replace(/^\s+/,"").replace(/\s+$/,"");
 }
+
+ByteBeat.makeContext = function() {
+  return {
+    console: {
+      Math: {
+        // because`log` gets changed to Math.log
+        log: console.log.bind(console),
+      },
+    },
+  };
+};
 
 ByteBeat.prototype.resize = function(width, height) {
   this.extra.width = width;
@@ -967,6 +998,21 @@ ByteBeat.prototype.setOptions = function(sections) {
 
 ByteBeat.prototype.setExpressions = function(expressions, extra) {
   var postfixTemplate = this.postfixTemplate;
+  var evalExp;
+
+  this.fnHeader = this.fnHeader || (function() {
+    const keys = {};
+    Object.getOwnPropertyNames(globalThis).forEach((key) => {
+      keys[key] = true;
+    });
+    delete keys['Math'];
+    delete keys['window'];
+    return `
+      (function(stack, window) { 
+        let ${Object.keys(keys).sort().join(',\n')};
+    `;
+  }());
+  var fnHeader = this.fnHeader
 
   function expressionStringToFn(x, extra) {
     x = removeCommentsAndLineBreaks(x);
@@ -982,13 +1028,15 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
       return replacer(substr, extra, p1, "extra.");
     });
 
-    log(x);
-    var c = "temp = {fn: function(stack) { " + x + " }()}";
-    var f = eval(c).fn;
+
+    evalExp = `${fnHeader}${x}}())`;
+    console.log(evalExp);
+    var f = evalHelper(evalExp);
+    var ctx = ByteBeat.makeContext();
 
     var stack = new WrappingStack();
     for (var i = 0; i < 1000; i += 100) {
-      var s = f(i, i, stack);
+      var s = f(i, i, stack, ctx);
       if (i == 0) {
         log("stack: " + stack.sp());
       }
@@ -1113,7 +1161,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     if (expressionType == 1) {  // postfix
       x = postfixToInfix(x);
     } else {  // infix
-      x = "  return function(t, i) { " +
+      x = "  return function(t, i, stack, window) { " +
           "    return " + strip(x) + "; " +
           "  }";
     }
@@ -1134,6 +1182,16 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     }
   } catch(e) {
     if (this.onCompileCallback) {
+      if (e.stack) {
+        const m = /<anonymous>:1:(\d+)/.exec(e.stack);
+        if (m) {
+          const charNdx = parseInt(m[1]);
+          console.error(e.stack);
+          console.error(evalExp.substring(0, charNdx), '-----VVVVV-----\n', evalExp.substring(charNdx));
+        }
+      } else {
+        console.error(e, e.stack);
+      }
       this.onCompileCallback(e.toString());
     }
     return;
@@ -1193,28 +1251,30 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var fn1 = this.functions[1];
   var stack0 = this.stacks[0];
   var stack1 = this.stacks[1];
+  var ctx0 = this.contexts[0];
+  var ctx1 = this.contexts[1];
   if (fn1) {
     buffer1 = this.buffer1;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  , undefined, stack0);
-        buffer1[i] = fn1(time++, undefined, stack1);
+        buffer0[i] = fn0(time  , undefined, stack0, ctx0);
+        buffer1[i] = fn1(time++, undefined, stack1, ctx1);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  , undefined, stack0) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++, undefined, stack1) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time  , undefined, stack0, ctx0) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++, undefined, stack1, ctx1) & 255) / 127 - 1;
       }
     }
   } else {
     buffer1 = this.buffer0;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++, undefined, stack0);
+        buffer0[i] = fn0(time++, undefined, stack0, ctx0);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++, undefined, stack0) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time++, undefined, stack0, ctx0) & 255) / 127 - 1;
       }
     }
   }
@@ -1258,11 +1318,11 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   this.time += dataLength;
 };
 
-ByteBeat.prototype.getSampleForTime = function(time, channel = 0) {
+ByteBeat.prototype.getSampleForTime = function(time, context, stack, channel = 0) {
   if (!this.functions[1]) {
     channel = 0;
   }
-  const s = this.functions[channel](time, undefined, this.tempStack[0]);
+  const s = this.functions[channel](time, channel, stack, context);
   return this.floatBeat ? s : (s & 255) / 127 - 1;
 };
 
@@ -1298,7 +1358,7 @@ ByteBeat.prototype.pause = function() {
   }
 };
 
-Visualizer = function(canvas) {
+function Visualizer(canvas) {
   this.canvas = canvas;
   this.type = 1;
 };
@@ -1324,7 +1384,7 @@ Visualizer.prototype.handleCapture = function() {
   }
 };
 
-WebGLVisualizer = function(canvas) {
+function WebGLVisualizer(canvas) {
   Visualizer.call(this, canvas);
   this.type = 1;
   this.temp = new Float32Array(1);
@@ -1428,6 +1488,11 @@ WebGLVisualizer.prototype.resize = function(width, height) {
     data.model = new tdl.models.Model(program, arrays, textures);
     this.dataTex = tex;
   }
+
+  this.dataContext = ByteBeat.makeContext();
+  this.dataStack = new WrappingStack();
+  this.sampleContext = ByteBeat.makeContext();
+  this.sampleStack = new WrappingStack();
 
   this.dataWidth = 1024;
   var dataBuf = new Uint8Array(this.dataWidth);
@@ -1608,7 +1673,7 @@ WebGLVisualizer.prototype.update = function(buffer, length) {
     var max = Math.min(length, this.width - this.position);
     var d = this.position * 2;
     var h1 = buffer[offset];
-    for (i = 0; i < max; ++i) {
+    for (let i = 0; i < max; ++i) {
       var h2 = buffer[++offset];
       var dy = h1 - h2;
       dest[d++] = h1;
@@ -1640,13 +1705,13 @@ WebGLVisualizer.prototype.render = function() {
   this.resolution[1] = canvas.height;
 
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  this.dataPixel[0] = g_byteBeat.getSampleForTime(this.dataTime++) * 127 + 127;
+  this.dataPixel[0] = g_byteBeat.getSampleForTime(this.dataTime++, this.dataContext, this.dataStack) * 127 + 127;
   gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
   this.dataPos = (this.dataPos + 1) % this.dataWidth;
 
   this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   for (var ii = 0; ii < 2; ++ii) {
-    this.samplePixel[0] = g_byteBeat.getSampleForTime(this.sampleTime++) * 127 + 127;
+    this.samplePixel[0] = g_byteBeat.getSampleForTime(this.sampleTime++, this.sampleContext, this.sampleStack) * 127 + 127;
     gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
     this.samplePos = (this.samplePos + 1) % this.sampleWidth;
   }
@@ -1676,7 +1741,7 @@ WebGLVisualizer.prototype.render = function() {
   this.handleCapture();
 };
 
-CanvasVisualizer = function(canvas) {
+function CanvasVisualizer(canvas) {
   Visualizer.call(this, canvas);
   this.ctx = canvas.getContext("2d");
   this.temp = new Float32Array(1);
@@ -1773,7 +1838,7 @@ CanvasVisualizer.prototype.render = function() {
   this.drawPosition = dp;
 };
 
-NullVisualizer = function(canvas) {
+function NullVisualizer(canvas) {
   Visualizer.call(this, canvas);
 };
 
@@ -1882,7 +1947,7 @@ void main() {
 }
 </script>
 <script type="string" id="postfix-template">
-return function(t, i, stack) {
+return function(t, i, stack, window) {
   $(exp)
 };
 </script>
