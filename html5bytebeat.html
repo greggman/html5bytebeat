@@ -1008,7 +1008,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     delete keys['Math'];
     delete keys['window'];
     return `
-      (function(stack, window) { 
+      (function(stack, window, extra) { 
         let ${Object.keys(keys).sort().join(',\n')};
     `;
   }());
@@ -1030,13 +1030,14 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
 
 
     evalExp = `${fnHeader}${x}}())`;
-    console.log(evalExp);
+//    console.log(evalExp);
     var f = evalHelper(evalExp);
     var ctx = ByteBeat.makeContext();
 
     var stack = new WrappingStack();
+    var tempExtra = Object.assign({}, extra);
     for (var i = 0; i < 1000; i += 100) {
-      var s = f(i, i, stack, ctx);
+      var s = f(i, i, stack, ctx, tempExtra);
       if (i == 0) {
         log("stack: " + stack.sp());
       }
@@ -1161,7 +1162,7 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     if (expressionType == 1) {  // postfix
       x = postfixToInfix(x);
     } else {  // infix
-      x = "  return function(t, i, stack, window) { " +
+      x = "  return function(t, i, stack, window, extra) { " +
           "    return " + strip(x) + "; " +
           "  }";
     }
@@ -1253,28 +1254,29 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var stack1 = this.stacks[1];
   var ctx0 = this.contexts[0];
   var ctx1 = this.contexts[1];
+  var extra = this.extra;
   if (fn1) {
     buffer1 = this.buffer1;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  , undefined, stack0, ctx0);
-        buffer1[i] = fn1(time++, undefined, stack1, ctx1);
+        buffer0[i] = fn0(time  , undefined, stack0, ctx0, extra);
+        buffer1[i] = fn1(time++, undefined, stack1, ctx1, extra);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  , undefined, stack0, ctx0) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++, undefined, stack1, ctx1) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time  , undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+        buffer1[i] = (fn1(time++, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
       }
     }
   } else {
     buffer1 = this.buffer0;
     if (this.floatBeat) {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++, undefined, stack0, ctx0);
+        buffer0[i] = fn0(time++, undefined, stack0, ctx0, extra);
       }
     } else {
       for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++, undefined, stack0, ctx0) & 255) / 127 - 1;
+        buffer0[i] = (fn0(time++, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
       }
     }
   }
@@ -1322,7 +1324,7 @@ ByteBeat.prototype.getSampleForTime = function(time, context, stack, channel = 0
   if (!this.functions[1]) {
     channel = 0;
   }
-  const s = this.functions[channel](time, channel, stack, context);
+  const s = this.functions[channel](time, channel, stack, context, this.extra);
   return this.floatBeat ? s : (s & 255) / 127 - 1;
 };
 
@@ -1947,7 +1949,7 @@ void main() {
 }
 </script>
 <script type="string" id="postfix-template">
-return function(t, i, stack, window) {
+return function(t, i, stack, window, extra) {
   $(exp)
 };
 </script>
