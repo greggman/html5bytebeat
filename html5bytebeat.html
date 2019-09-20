@@ -1707,13 +1707,13 @@ WebGLVisualizer.prototype.render = function() {
   this.resolution[1] = canvas.height;
 
   this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  this.dataPixel[0] = g_byteBeat.getSampleForTime(this.dataTime++, this.dataContext, this.dataStack) * 127 + 127;
+  this.dataPixel[0] = Math.round(g_byteBeat.getSampleForTime(this.dataTime++, this.dataContext, this.dataStack) * 127) + 127;
   gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
   this.dataPos = (this.dataPos + 1) % this.dataWidth;
 
   this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   for (var ii = 0; ii < 2; ++ii) {
-    this.samplePixel[0] = g_byteBeat.getSampleForTime(this.sampleTime++, this.sampleContext, this.sampleStack) * 127 + 127;
+    this.samplePixel[0] = Math.round(g_byteBeat.getSampleForTime(this.sampleTime++, this.sampleContext, this.sampleStack) * 127) + 127;
     gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
     this.samplePos = (this.samplePos + 1) % this.sampleWidth;
   }
