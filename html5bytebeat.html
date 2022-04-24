@@ -29,9 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
 <title>HTML5 Bytebeat</title>
 <script src="js/lzma.js"></script>
 <script src="js/wavmaker.js"></script>
@@ -42,10 +44,10 @@
 html, body {
     width: 100%;
     height: 100%;
-    padding: 0px;
-    border: 0px;
-    overflow: hidden;
+    margin: 0;
     font-family: Monospace;
+    background-color: black;
+    color: white;
 }
 a:link, a:visited, a:hover, a:active {
   color: white;
@@ -65,21 +67,26 @@ a:link, a:visited, a:hover, a:active {
     width: 100%;
     height: 100%;
     z-index: 2;
+    display: flex;
+    flex-direction: column;
 }
 #visualization {
     width: 100%;
     height: 100%;
     background-color: rgb(0, 0, 66);
 }
+.status {
+  color: #0F0;
+}
+.status.error {
+  color: #F00;
+}
 #controls {
-    position: absolute;
-    left: 25px;
-    top: 25px;
+  /* */
 }
 #code {
-    position: absolute;
-    left: 25px;
-
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 12px;
 
     border: none;
@@ -108,9 +115,9 @@ button, select, .buttonstyle {
     border: none;
     border-radius: 5px;
     margin-right: 5px;
-    color: #ffffff;
-    background-color: #000000;
-    opacity: 0.5;
+    margin-bottom: 5px;
+    color: #aaa;
+    background-color: rgba(0, 0, 0, 0.5);
     font-family: Monospace;
     font-size: 12px;
     font-weight: bold;
@@ -155,7 +162,9 @@ input {
    border: none;
 }
 #startContainer {
-  display: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 1000;
   position: absolute;
   width: 100%;
@@ -163,8 +172,6 @@ input {
   left: 0px;
   top: 0px;
   background-color: rgba(0, 0, 0, 0.7);
-  text-align: center;
-  vertical-align: middle;
 }
 #startButton {
   color: white;
@@ -172,6 +179,14 @@ input {
   background-color: blue;
   border: 0.2em solid blue;
   border-radius: 0.2em;
+}
+@media screen and (max-width: 700px) {
+  #startButton {
+    font-size: 48pt;
+  }
+  #code {
+    font-size: 16px;
+  }
 }
 </style>
 <script>
@@ -231,8 +246,6 @@ function log(msg) {
 }
 
 function main() {
-  var iOS = ( navigator.userAgent.match(/(iPad|iPhone|iPod)/g) ? true : false );
-  g_slow = iOS;
   compressor = new LZMA( "js/lzma_worker.js" );
   canvas = $("visualization");
   controls = $("controls");
@@ -326,6 +339,7 @@ function main() {
   controls.appendChild(saveElem);
 
   compileStatusElem = document.createElement('button');
+  compileStatusElem.className = 'status';
   compileStatusElem.textContent = "---";
   controls.appendChild(compileStatusElem);
 
@@ -392,7 +406,6 @@ function main() {
   window.addEventListener('resize', onWindowResize, false);
   {
     var s = $("startContainer");
-    s.style.display = "table";
     s.addEventListener('click', function() {
       s.style.display = "none";
       g_byteBeat.resume(playPause);
@@ -443,10 +456,6 @@ function main() {
   }
 
   function onWindowResize(event) {
-    codeElem.style.top = '75px';
-    codeElem.style.width = ( window.innerWidth - 75 ) + 'px';
-    codeElem.style.height = ( window.innerHeight - 125 ) + 'px';
-
     g_byteBeat.resize(canvas.clientWidth, canvas.clientHeight);
     g_visualizer.resize(canvas.clientWidth, canvas.clientHeight);
   }
@@ -612,13 +621,10 @@ function compile(text) {
 }
 
 function handleCompileError(error) {
+  compileStatusElem.textContent = error ? error : "*";
+  compileStatusElem.classList.toggle('error', error);
   if (error == null) {
-    compileStatusElem.textContent = "compiled successfully";
-    compileStatusElem.style.color = "#0F0";
     setURL();
-  } else {
-    compileStatusElem.textContent = error;
-    compileStatusElem.style.color = "#F00";
   }
 }
 
@@ -1885,10 +1891,9 @@ NullVisualizer.prototype.render = function() {
     </div>
   </div>
 </div>
-<!-- FUCKING FUCKY CSS FUCK!!! I CAN'T GET IT TO CENTER A DIV! -->
-<table id="startContainer"><tr><td>
-   <span id="startButton">play ▶</span>
-</td/</tr></table>
+<div id="startContainer">
+   <div id="startButton">play ▶</div>
+</div>
 <script id="waveVertexShader" type="not-js">
 attribute float column;
 attribute float height;
