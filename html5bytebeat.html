@@ -596,7 +596,7 @@ function splitBySections(str) {
     }
     var m = str.match(g_splitRE);
     var sectionName = m[1];
-    newStr = getNextSection(str.substring(pos + 3 + sectionName.length));
+    var newStr = getNextSection(str.substring(pos + 3 + sectionName.length));
     sections[sectionName] = newStr;
     return str.substring(0, pos);
   }
