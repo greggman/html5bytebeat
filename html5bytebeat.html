@@ -305,14 +305,14 @@ function main() {
     return select;
   }
 
-  beatTypeElem = addSelection(["bytebeat", "floatbeat"], 0);
+  beatTypeElem = addSelection(["bytebeat", "floatbeat", "signedbytebeat"], 0);
   beatTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setType(event.target.selectedIndex);
     setURL();
   }, false);
   controls.appendChild(beatTypeElem);
 
-  expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch"], 0);
+  expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch", "function"], 0);
   //expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
@@ -749,11 +749,12 @@ function ByteBeat() {
   this.desiredSampleRate = 8000;
   this.time = 0;
   this.expandMode = 0;
-  this.floatBeat = false;
+  this.type = 0;
   this.expressionType = 0;
-  this.functions = [function(t) {
+  this.int8 = new Int8Array(1);
+  this.functions = [{f: function(t) {
     return Math.sin(t) * 0.1;
-  }]
+  }, array: false}];
   this.contexts = [ByteBeat.makeContext(), ByteBeat.makeContext()];
   this.expressions = ["Math.sin(t) * 0.1"];
   this.extra = {
@@ -1014,46 +1015,56 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     delete keys['Math'];
     delete keys['window'];
     return `
-      (function(stack, window, extra) { 
-        let ${Object.keys(keys).sort().join(',\n')};
+        var ${Object.keys(keys).sort().join(',\n')};
+        var ${Object.getOwnPropertyNames(Math).map(key => {
+          const value = Math[key];
+          return (typeof value === 'function')
+              ? `${key} = Math.${key}.bind(Math)`
+              : `${key} = Math.${key}`
+        }).join(',\n')};
     `;
   }());
   var fnHeader = this.fnHeader
 
-  function expressionStringToFn(x, extra) {
+  function expressionStringToFn(x, extra, expressionType) {
     x = removeCommentsAndLineBreaks(x);
     // Translate a few things.
     function replacer(str, obj, p1, name) {
       return obj.hasOwnProperty(p1) ? (name + p1) : str;
     }
     x = x.replace(/\bint\b/g, "floor");
-    x = x.replace(/(?:Math\.)?(\w+)/g, function(substr, p1) {
-      return replacer(substr, Math, p1, "Math.");
-    });
     x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
       return replacer(substr, extra, p1, "extra.");
     });
 
-
-    evalExp = `${fnHeader}${x}}())`;
-//    console.log(evalExp);
-    var f = evalHelper(evalExp);
+    evalExp = `${fnHeader}${x}`;
+    var fp = new Function('stack', 'window', 'extra', evalExp);
+    var f = fp(undefined, undefined, undefined);
+    // hack :(
+    if (expressionType === 3) {
+      f = f();
+    }
     var ctx = ByteBeat.makeContext();
 
     var stack = new WrappingStack();
     var tempExtra = Object.assign({}, extra);
+    var array = false;
     for (var i = 0; i < 1000; i += 100) {
       var s = f(i, i, stack, ctx, tempExtra);
       if (i == 0) {
         log("stack: " + stack.sp());
       }
       //log("" + i + ": " + s);
+      if (Array.isArray(s) && s.length === 2 && typeof s[0] === 'number' && typeof s[1] === 'number') {
+        array = true;
+        continue;
+      }
       if (typeof s != "number") {
         throw "NaN";
       }
     }
 
-    return f;
+    return {f, array};
   }
 
   function postfixToInfix(x) {
@@ -1161,18 +1172,27 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
   }
 
   function compileExpression(x, expressionType, extra, window) {
-    if (expressionType == 2) { // glitch
-      x = glitchToPostfix(x);
-      expressionType = 1;
+    if (expressionType == 3) { // function
+      x = `
+          return function(t, i, stack, window, extra) { 
+              ${strip(x)};
+          }`;
+    } else {
+      if (expressionType == 2) { // glitch
+        x = glitchToPostfix(x);
+        expressionType = 1;
+      }
+      if (expressionType == 1) {  // postfix
+        x = postfixToInfix(x);
+      } else {  // infix
+        x = `
+            return function(t, i, stack, window, extra) { 
+                return ${strip(x)};
+            }`;
+      }
     }
-    if (expressionType == 1) {  // postfix
-      x = postfixToInfix(x);
-    } else {  // infix
-      x = "  return function(t, i, stack, window, extra) { " +
-          "    return " + strip(x) + "; " +
-          "  }";
-    }
-    return expressionStringToFn(x, extra);
+    const result = expressionStringToFn(x, extra, expressionType);
+    return result;
   }
 
   var funcs = [];
@@ -1236,12 +1256,12 @@ ByteBeat.prototype.getExpressionType = function() {
   return this.expressionType;
 };
 
-ByteBeat.prototype.setType = function(floatBeat) {
-  this.floatBeat = floatBeat;
+ByteBeat.prototype.setType = function(type) {
+  this.type = type;
 };
 
 ByteBeat.prototype.getType = function() {
-  return this.floatBeat;
+  return this.type;
 };
 
 ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
@@ -1254,36 +1274,87 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var buffer0 = this.buffer0;
   var buffer1;
   //
-  var fn0 = this.functions[0];
-  var fn1 = this.functions[1];
+  var fn0 = this.functions[0].f;
+  var fn0Array = this.functions[0].array;
+  var fn1 = (this.functions[1] || {}).f;
   var stack0 = this.stacks[0];
   var stack1 = this.stacks[1];
   var ctx0 = this.contexts[0];
   var ctx1 = this.contexts[1];
   var extra = this.extra;
-  if (fn1) {
+  var int8 = this.int8;
+  var divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+
+  if (fn0Array) {
     buffer1 = this.buffer1;
-    if (this.floatBeat) {
-      for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time  , undefined, stack0, ctx0, extra);
-        buffer1[i] = fn1(time++, undefined, stack1, ctx1, extra);
-      }
-    } else {
-      for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time  , undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-        buffer1[i] = (fn1(time++, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
-      }
+    switch (this.type) {
+      case 0: // bytebeat
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = (s[0] & 255) / 127 - 1;
+          buffer1[i] = (s[1] & 255) / 127 - 1;
+        }
+        break;
+      case 1:  // floatbeat
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
+          buffer0[i] = s[0];
+          buffer1[i] = s[1];
+        }
+        break;
+      case 2:  // signed bytebeat
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          int8[0] = s[0];
+          buffer0[i] = int8[0] / 128;
+          int8[0] = s[1];
+          buffer1[i] = int8[0] / 128
+        }
+        break;
+    }
+  } else if (fn1) {
+    buffer1 = this.buffer1;
+    switch (this.type) {
+      case 0: // bytebeat
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+          buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+        }
+        break;
+      case 1:  // floatbeat
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+          buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+        }
+        break;
+      case 2:  // signed bytebeat
+        for (let i = 0; i < lastSample; ++i) {
+          int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = int8[0] / 128;
+          int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+          buffer1[i] = int8[0] / 128
+        }
+        break;
     }
   } else {
     buffer1 = this.buffer0;
-    if (this.floatBeat) {
-      for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0(time++, undefined, stack0, ctx0, extra);
-      }
-    } else {
-      for (var i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0(time++, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-      }
+    switch (this.type) {
+      case 0: // bytebeat
+        for (var i = 0; i < lastSample; ++i) {
+          buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+        }
+        break;
+      case 1: // floatbeat
+        for (var i = 0; i < lastSample; ++i) {
+          buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+        }
+        break;
+      case 2: // signed bytebeat
+        for (var i = 0; i < lastSample; ++i) {
+          int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = int8[0] / 128;
+        }
+        break;
     }
   }
   if (dataLength) {
@@ -1327,11 +1398,24 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
 };
 
 ByteBeat.prototype.getSampleForTime = function(time, context, stack, channel = 0) {
+  var divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+  if (this.functions[0].array) {
+    const s = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
+    return s[channel];
+  }
   if (!this.functions[1]) {
     channel = 0;
   }
-  const s = this.functions[channel](time, channel, stack, context, this.extra);
-  return this.floatBeat ? s : (s & 255) / 127 - 1;
+  const s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
+  switch (this.type) {
+    case 0:
+      return (s & 255) / 127 - 1;
+    case 1:
+      return s;
+    case 2:
+      this.int8[0] = s;
+      return this.int8[0] / 128;
+  }
 };
 
 ByteBeat.prototype.startOnUserGesture = function() {

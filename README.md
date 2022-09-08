@@ -40,6 +40,11 @@ Here are a few sample songs
 * [number machine](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=1&s=8000&bb=5d0000010055000000000000000017e07cdc7535baa6c57b73bf3138c0f1471c6ace29f1b992bcae077e7af068c83d93258ca4ecd4c66ccd253f4dbc3d547e56cf5be5918755f67eb4c085b79712a12e0807ddb534a39d5bbbd0628f5f2a4a46ebffe624b000)
 * [starlost](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=1&s=8000&bb=5d0000010037000000000000000017e07ce6742f92b60556281edd280c7a480eab7695c53fe5f131568feffc61ccaff65a955210eaf30c7048d724fcc4670c20f6a44bfb8b29ffffe7be2000)
 * [guitarhead](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=1&s=8000&bb=5d0000010083000000000000000017e07cce7533b13f0fcbd97a4d19b9cd44b64bbbb1c1b6912008c98aba649a77e32b58031b00e447064f126fbe28b09f0257a8c92a67dae22f594834f569c4267a3270cac96658244b194621524f91ba79e34a4378fe1c74044aa2b5c442cb27c51abc34c044c973bb74e585fe1f95f7bf3dfff1d6a800)
+* [347 BEATSTEP INC. (by mega9man)](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=0&s=11000&bb=5d000001000d010000000000000017e07c6636e8b6400a429e20e00c183a14530fe169ba00b4bd6736cff0804b596ec63c76a8b9c228a643868128d2ae09a5f8f41199a25ee7bae2ccf0d06c2dd8338a32b7947cd88d26af71515db2fd6e67505f7e82dc7bc54e4e6d768c41ebc04b52dffeeff1ba72af88f2e6f31611250401b3e7320e66b23b248fb0d884def0eff45bd4de4e29b1ab562ae3cedccb50f9db435658b3fa203936f2499247d6a5fff97635c3) [from](https://battleofthebits.org/arena/Entry/347+BEATSTEP+INC./20403/)
+* [Fortnite Default Dance in Bytebeat (by raphaelgoulart)](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=0&s=44100&bb=5d0000010092010000000000000017e07cc4790f98839bdc88e68c4127e41df8219276962379c302a3bf60a80e8f76a400d3995407426d7d8514f8602702aa90b9008e486d156f57b88d47dad1e0d6663d3439861ab1d7b369566e119875ceb1ac980c97ee5562b8a4a76e8ba5ccbd59eee9e046a23c95187ea83c00b15b0c0d666b3952c4a725bd63148df654a125db78da496f46558d86c6f35d0faaf24c5c84618f9f824820765f82168811403eaa1bb11cb55effe88e940a54bee0f6e1ef065005a6c5f7a5d0685f4929ef384c23f212119b20a5eeb07f2740542853a4c03e0038ca57ab298a9635cea0fef354c2d8) [from](https://www.reddit.com/r/bytebeat/comments/b48xrx/fortnite_default_dance_in_bytebeat/)
+* [arpeggiator fun](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=0&s=44100&bb=5d00000100c2010000000000000017e07cc27237494e9c5a326ea9df5e34ac56d0e7ef73480d057a604acdb953ec4f724a606853a6db9668fc4d7757700817f92eb27b72357517af2a2953a29736580c16f66d692d785e9eacc02283b9a8a6a386856b2a28635ad1d6bf623122e105d5660135a9d2b0ddf43f6a47770f321ede3f2818bf2901360dd5c2d044d634209a6598a754e2be3763a164a991d6ca6d5d60efca2d9b9cb5bdc9bc0621f9bf3ba38e3a0ac7eda3e0b1474e79ac90b022e32cce48749fdff7b8e36805569f9689a74eeec70139844150f7b92ae4528306d30f268b1ce5bb8d3018f4b429d92b684f9f11c1ae7a497838b60475e051898024e9006996856dd521b1830e46e38b368d40e2a93c07045424250876b80054dfafb8ccb390e1804176c2cd5ed298a022e91ada6be66b5ff028928026c40caa1ccad1160a61c8c6fbfe14ea98fe4f72063597dadce1d85056ac480eff981eeefc4e4e3169a5fc553036ce043c61d467b3df4b79c8ff37523a00) [from](https://www.reddit.com/r/bytebeat/comments/fjsa1y/arpeggiator_fun/)
+* [remix of "The time is running out!" (remix of The time is running out! by SthephanShi)](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=0&s=11000&bb=5d00000100e3000000000000000017e07ce4653639846bd3ec801e25c23859a08936ae4663207affee39c479e6101551cd05a0fc07f07b520a42e3cb771c27d1e1227ae94223ce8c018fcc130255b9a75fba1d3125285e3cc9d3222ef9a72e040baf6c42409e59f3b3a8f9821c4ff757920017112ad27adb3649fe1b807c03a64bb2bbf9195fba14b60a07862fd28d5b90ea85d4eb01c19e75cdc089f688b88ee72cc4d74ec01761264aac0c76cf32e885745a679f3298245bc75529fbf5b480) [from](https://www.reddit.com/r/bytebeat/comments/qf9meb/remix_of_the_time_is_running_out_by_stephanshi/)
+
 
 Instructions
 ------------
@@ -52,9 +57,10 @@ There 2 modes
 * floatbeat: Your expression is expected to generate float values from -1.0 to 1.0
 
 ### Expression Types
-* Infix: Standard expressions eg. "(t * 2) / 4"
-* Postfix(rpn): Reverse Polish Notation eg "t 2 * 4 /"
+* Infix: Standard expressions eg. "`(t * 2) / 4`"
+* Postfix(rpn): Reverse Polish Notation eg "`t 2 * 4 /`"
 * glitch: glitch format or glitch urls.
+* function: Return a function. eg. "`t => (t * 2) / 4`"
 
 **Infix** is standard JavaScript so all Math functions are available.
 Most math functions you can drop the "Math." part. In other words
@@ -74,12 +80,12 @@ If you're unfamiliar with postfix [see below](#postfix)
 
 **Glitch** is a format used by glitch machine for sharing. Examples
 
-* <a href="http://goo.gl/5hLhys">42_forever!a13880fa400he!a5kma6kn40g!aCk28!a12k1ld!2fladm!43n</a>
-* <a href="http://goo.gl/xcvE2x">pipe_symphony!aEk5h5f!a11k2h!a9k3hdf!aDk4hg!ad4e!p5fm!a11k2h1rg!a5kdm</a>
+* <a href="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=2&s=8000&bb=5d0000010060000000000000000017e07c68347275b48b8a3e4ae5f2fcf118694f3c5b765c81e4a571018d893ec35ab1c80e51eaadbdb73dbe8af51bf1324d5fc68ca278d3c5fbff8e137344d360a109d789a07673a414f2b2171c4d5de9f1d3f2ecc410e9dfff85520000">42_forever!a13880fa400he!a5kma6kn40g!aCk28!a12k1ld!2fladm!43n</a>
+* <a href="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=2&s=8000&bb=5d000001006b000000000000000017e07ce06937cec415be16c16cd1dc7770bc5386546efdb66845ee0aa7b98eff2ba6e3f457299da2037f6a5ad9e8e38b3611b90fee512d353d0b25fc253191ae89a30e0f7adabb03c956d89bd548392fe27fe4ffe962f8939a5a65ff945a0000">pipe_symphony!aEk5h5f!a11k2h!a9k3hdf!aDk4hg!ad4e!p5fm!a11k2h1rg!a5kdm</a>
 
 These can be prefixed with "glitch://". For example
 
-* <a href="http://goo.gl/0PfWZ5">glitch://sadglitch!4.4.9.8.9.6.4.2!aoCk8hq!ad2d!aFk3h1fe!p5d3em!a63hm!a7kFFlp80slf</a>
+* <a href="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=2&s=8000&bb=5d0000010074000000000000000017e07ce661316231c4f949bffc8dd7660451a2571363cac6697ec8fb0cdb5eb5685ae9f83ad7be74c020fa1efe54e1b53cf571811b40ca41357fd42f73eb9683e086bd4aaf30dc675ee6bb090c9840be59402238c6553b9cc0eea0bdc6ddeac83341fdff033c0000">glitch://sadglitch!4.4.9.8.9.6.4.2!aoCk8hq!ad2d!aFk3h1fe!p5d3em!a63hm!a7kFFlp80slf</a>
 
 <a href="https://github.com/erlehmann/libglitch/tree/master/tracks">There's
 a bunch more here</a>. I have a feeling there's a bug or 2 left for full glitch support
@@ -96,7 +102,7 @@ like. It works with a stack. Each command either adds things to the stack or use
               // adds them, puts the result on the
               // stack                                 stack = 569
 
-Note the stack is only 256 elements deep. If you push 257 elements it wraps around. Similary if you use `pick`
+Note the stack is only 256 elements deep. If you push 257 elements it wraps around. Similarly if you use `pick`
 with a large value your pick will wrap around. The stack is neither cleared nor reset on each iteration
 of your function. Some postfix based bytebeat songs take advantage of this where each iteration leaves
 things on the stack for the next iteration.
@@ -156,9 +162,54 @@ In other words `4 2 /` is 4 divided by 2.
 
 Pops the top of the stack, applies the binary negate to it, pushes the result.
 
+### Funcbeat
+
+See [#Rant]
+
+Funcbeat means you could write code that returns a function. The simplest example
+might be
+
+```js
+return function(t) {
+  sin(t);
+}
+```
+
+or shorter
+
+```js
+return t => sin(t);
+```
+
+The point being you can write more generic JavaScript. For example
+
+```js
+const notes = [261.62, 329.628, 391.995, 523.25, 391.995, 329.628, 261.62, 261.62, 1, 1];
+function getNote(t) {
+  const ndx = (t * 4 | 0) % notes.length;
+  return note = notes[ndx];
+}
+
+return function(t) {
+  const note = getNote(t);
+  return sin(t * 10 * note);
+}
+```
+
+But see [Rant](#Rant) why this is seems kind of missing the point.
+
+### Stereo
+
+You can emit an array with 2 values for left and right channels. Eg.
+
+```
+[sin(t), sin(t / 2)]
+```
+
 ### Extra
 
-Comments can be both // or /* */ style
+Comments can be both // or /* */ style and I'd personally suggest
+you use comments for your name, the song's name, etc...
 
 There are several extra inputs available
 
@@ -173,6 +224,55 @@ The orientation of a device may be available as `tiltX` and `tiltY`.
     (sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
 
 Also note, using the comma operator you can write fairly arbitrary code. [See this example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=1&e=0&s=22000&bb=5d0000010058010000000000000017e07ce86fbd1ca9dedaaaf283d5ff76502fd7dadb76e5d882697d441ca3af61153f2f1380cbf89731ae302303c50ef1ebed677ad146c1f124dcf3cc109dd31ddd363d9d15d0d6a631f5f755297df9d98d614a051e4ed8cad8dae98b3b60d98a87f3ef147227e075cf005fc063cb9e4afe0ef1418c10607d6e7748e5c4477a20901c00ef5379b618214e7e2a2c8a538fec32de37b565c288aa49e52f2bcae7c1c9c474fcf1eb149f734180cccc153d360cb13e758ccf5d1eb9bebee221421a05b2a991f07c0b2ee2ed8ffa2ff5fc).
+
+Rant
+----
+
+The original bytebeat, or at least the one I saw, was fairly simple. 8bits, stack based,
+few options. When I built a live JavaScript version I just thought 
+"you get an expression that takes time and returns a value". **The end**.
+
+A few obvious additions, at least to me, were floatbeat, because the Web Audio API itself
+takes floats. In fact I wrote that first. I just feed an expression that returns floats
+into the Web Audio API. I then manually converted a few beatbyte expressions by just
+putting `(original-bytebeat-exprssion) / 255 * 2 - 1`. The reason I didn't just stick
+with floatbeat is bytebeat expressions already existed and wanted people to be able to
+use them without having to understand how to convert, even though it's trivial.
+
+But now I see people have added *signed bytebeat*. WTF is the point? Any signed bytebeat
+can be turned in to regular bytebeat by just putting `+ 0x80` at the end of your expression.
+The entire point of bytebeat is to be self sufficient, to put what you need in the expression
+itself.
+
+I then found a `funcbeat` in which instead of an expression you pass it a function body.
+The advantage is you can write actual code and declare other functions and data. For example:
+
+```js
+const notes = [261.62, 329.628, 391.995, 523.25, 391.995, 329.628, 261.62, 261.62, 1, 1];
+function getNote(t) {
+  const ndx = (t * 4 | 0) % notes.length;
+  return note = notes[ndx];
+}
+
+return function(t) {
+  const note = getNote(t);
+  return sin(t * 10 * note);
+}
+```
+
+But again, WTF is the point? If you're going to write real code with no limits then why
+do it this way all? Just write code, no need to try to cram it into a bytebeat player.
+
+Then I found that some people had added a time divisor. For example, instead
+of `t` counting in samples it can count in seconds (fractional values). But again,
+WTF is the point? Why does this option need to exist when you can just divide `t`
+by the sample rate in the expression itself?
+
+It'd be like if someone added various options for time. `t = sample`, `t = sample / sampleRate`, `t = sin(sammple)`, `t = sin(sample / sampleRate)` etc. The whole
+point is to **PUT THE MATH IN YOUR EXPRESSION!!!**. There's no need to add these
+options 😤
+
+&lt;/rant&gt; 😛
 
 For more info
 -------------
