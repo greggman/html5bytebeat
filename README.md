@@ -306,3 +306,10 @@ Special thanks to:
 * Nathan Rugg for his [LZMA-JS library](https://github.com/nmrugg/LZMA-JS).
 * Darius Bacon for his [bytebeat program](https://github.com/darius/bytebeat) and for tips and examples to test it.
 
+# Library
+
+TBD
+
+# License
+
+[MIT](LICENSE.md)
