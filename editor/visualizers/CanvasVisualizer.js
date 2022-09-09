@@ -30,13 +30,7 @@ export default class CanvasVisualizer extends Visualizer {
     this.ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  setEffects(/*sections*/) {
-  }
-
   update(buffer, length) {
-    if (!this.type && !this.captureCallback) {
-      return;
-    }
     // Yes I know this is dumb. I should just do the last 2 at most.
     let s = 0;
     let p = this.position;
@@ -55,9 +49,6 @@ export default class CanvasVisualizer extends Visualizer {
   }
 
   render() {
-    if (!this.type) {
-      return;
-    }
     let count = Math.min(this.drawCount, this.width);
     let dp = this.drawPosition;
     const ctx = this.ctx;

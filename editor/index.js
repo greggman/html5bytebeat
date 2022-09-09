@@ -15,6 +15,7 @@ function strip(s) {
 }
 
 let g_byteBeat;
+let g_visualizers;
 let g_visualizer;
 let g_screenshot;
 let g_saving = false;
@@ -121,11 +122,38 @@ function main() {
   }, false);
   controls.appendChild(sampleRateElem);
 
-  visualTypeElem = addSelection(['none', 'wave'], 1);
-  visualTypeElem.addEventListener('change', function(event) {
-    g_visualizer.setType(event.target.selectedIndex);
-  }, false);
-  controls.appendChild(visualTypeElem);
+  if (g_slow) {
+    g_visualizers = [
+      {name: 'none', visualizer: new NullVisualizer() },
+    ];
+  } else {
+    const gl = document.createElement('canvas').getContext('webgl');
+    g_visualizers = gl
+        ? [
+            { name: 'none', visualizer: new NullVisualizer(), },
+            { name: 'wave', visualizer: new WaveVisualizer(canvas, false), },
+            // { name: 'wavePlus', visualizer: new WaveVisualizer(canvas, true), },
+          ]
+        : [
+            { name: 'none', visualizer: new NullVisualizer(), },
+            { name: 'simple', visualizer: new CanvasVisualizer(canvas), },
+          ];
+  }
+
+  {
+    const setVisualizer = ndx => {
+      g_visualizer = g_visualizers[ndx].visualizer;
+      g_byteBeat.setVisualizer(g_visualizer);
+    };
+    const names = g_visualizers.map(({name}) => name);
+    const ndx = Math.min(names.length - 1, 1);
+    visualTypeElem = addSelection(names, ndx);
+    visualTypeElem.addEventListener('change', function(event) {
+      setVisualizer(event.target.selectedIndex);
+    }, false);
+    controls.appendChild(visualTypeElem);
+    setVisualizer(ndx);
+  }
 
   saveElem = document.createElement('button');
   saveElem.textContent = 'save';
@@ -136,14 +164,6 @@ function main() {
   compileStatusElem.className = 'status';
   compileStatusElem.textContent = '---';
   controls.appendChild(compileStatusElem);
-
-  if (g_slow) {
-    g_visualizer = new NullVisualizer();
-  } else {
-    const gl = document.createElement('canvas').getContext('webgl');
-    g_visualizer = gl ? new WaveVisualizer(canvas) : new CanvasVisualizer(canvas);
-  }
-  g_byteBeat.setVisualizer(g_visualizer);
 
   codeElem = $('code');
   const ignoreKeysSet = new Set([
@@ -199,7 +219,7 @@ function main() {
   });
 
   g_byteBeat.setOnCompile(handleCompileError);
-  g_visualizer.setOnCompile(handleCompileError);
+  //g_visualizer.setOnCompile(handleCompileError);
 
   if (window.location.hash) {
     const hash = window.location.hash.substr(1);

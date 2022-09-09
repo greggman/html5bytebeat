@@ -9,16 +9,16 @@ const colorRed = new Float32Array([1, 0, 0, 1]);
 const colorMagenta = new Float32Array([1, 0, 1, 1]);
 const colorGreen = new Float32Array([0, 1, 0, 1]);
 
-export default class WebGLVisualizer extends Visualizer {
-  constructor(canvas) {
+export default class WaveVisualizer extends Visualizer {
+  constructor(canvas, showSample) {
     super(canvas);
+    this.showSample = showSample;
     const gl = canvas.getContext('webgl', {
       alpha: false,
       antialias: false,
       preserveDrawingBuffer: true,
     });
     this.gl = gl;
-    this.type = 1;
     this.temp = new Float32Array(1);
     this.resolution = new Float32Array(2);
     this.effects = {
@@ -75,7 +75,7 @@ export default class WebGLVisualizer extends Visualizer {
           offset: 0,
           time: 0,
           resolution: this.resolution,
-          color: new Float32Array([0, 1, 0, 1]),
+          color: new Float32Array([0, 0.7, 0, 1]),
         },
       },
       data: {
@@ -268,9 +268,6 @@ export default class WebGLVisualizer extends Visualizer {
   }
 
   update(bufferL, bufferR, length) {
-    if (!this.type) {
-      return;
-    }
     const position = this.position;
     this.position = this.updateBuffer(bufferL, length, this.lineHeightL, position, this.effects.wave.bufferInfoL);
     this.is2Channels = bufferL !== bufferR;
@@ -281,10 +278,6 @@ export default class WebGLVisualizer extends Visualizer {
   }
 
   render(byteBeat) {
-    if (!this.type && !this.captureCallback) {
-      return;
-    }
-
     const gl = this.gl;
     gl.clearColor(0, 0, 0.3, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -313,8 +306,7 @@ export default class WebGLVisualizer extends Visualizer {
     data.uniforms.time = now - this.then;
     drawEffect(gl, data);
 
-    /*
-    {
+    if (this.showSample) {
       const {sample} = this.effects;
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -323,7 +315,6 @@ export default class WebGLVisualizer extends Visualizer {
       drawEffect(gl, sample);
       gl.disable(gl.BLEND);
     }
-    */
 
     wave.uniforms.color = this.is2Channels ? colorMagenta : colorRed;
     wave.uniforms.position = this.position / this.width;
