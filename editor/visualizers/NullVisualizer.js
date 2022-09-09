@@ -1,22 +1,22 @@
 import Visualizer from './Visualizer.js';
 
-export default function NullVisualizer(canvas) {
-  Visualizer.call(this, canvas);
-};
+export default class NullVisualizer extends Visualizer {
+  constructor(canvas) {
+    super(canvas);
+  }
 
-tdl.base.inherit(NullVisualizer, Visualizer);
+  resize(width, height) {
+  }
 
-NullVisualizer.prototype.resize = function(width, height) {
-};
+  reset() {
+  }
 
-NullVisualizer.prototype.reset = function() {
-};
+  setEffects(sections) {
+  }
 
-NullVisualizer.prototype.setEffects = function(sections) {
-};
+  update(buffer, length) {
+  }
 
-NullVisualizer.prototype.update = function(buffer, length) {
-};
-
-NullVisualizer.prototype.render = function() {
-};
+  render() {
+  }
+}
