@@ -1,6 +1,6 @@
 {
   "name": "bytebeat.js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "a bytebeat library",
   "module": "src/ByteBeat.js",
   "engines": {
@@ -33,6 +33,5 @@
     "eslint-plugin-optional-comma-spacing": "0.0.4",
     "eslint-plugin-require-trailing-comma": "0.0.1"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
