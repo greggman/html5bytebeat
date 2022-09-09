@@ -1,4 +1,3 @@
-/* global tdl */
 /* global LZMA */
 /* global WavMaker */
 import ByteBeat from '../src/ByteBeat.js';
@@ -6,16 +5,6 @@ import WrappingStack from '../src/WrappingStack.js';
 import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
-
-tdl.require('tdl.buffers');
-tdl.require('tdl.fast');
-tdl.require('tdl.models');
-tdl.require('tdl.primitives');
-tdl.require('tdl.programs');
-tdl.require('tdl.textures');
-tdl.require('tdl.webgl');
-
-window.addEventListener('load', main);
 
 function $(id) {
   return document.getElementById(id);
@@ -32,7 +21,6 @@ let g_saving = false;
 let g_saveDialogInitialized = false;
 let g_screenshotCanvas;
 let g_screenshotContext;
-let gl;
 let playing = false;
 let codeElem;
 let helpElem;
@@ -151,14 +139,7 @@ function main() {
   if (g_slow) {
     g_visualizer = new NullVisualizer();
   } else {
-    gl = tdl.webgl.setupWebGL(
-      canvas, {
-        alpha: false,
-        antialias: false,
-        preserveDrawingBuffer: true,
-      },
-      function(){});
-
+    const gl = document.createElement('canvas').getContext('webgl');
     g_visualizer = gl ? new WaveVisualizer(canvas) : new CanvasVisualizer(canvas);
   }
   g_byteBeat.setVisualizer(g_visualizer);
@@ -241,7 +222,7 @@ function main() {
       updateTimeDisplay();
       g_visualizer.render(g_byteBeat);
     }
-    tdl.webgl.requestAnimationFrame(render, canvas);
+    requestAnimationFrame(render, canvas);
   }
   render();
 
@@ -492,3 +473,5 @@ function setURL() {
   },
   dummyFunction);
 }
+
+main();
