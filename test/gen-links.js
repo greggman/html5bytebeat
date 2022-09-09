@@ -1,4 +1,11 @@
 /* global require, __dirname */
+/*
+extracts the links from the README and outputs an HTML file to stdout
+
+run with
+
+    node tools/gen-links.js > someFile.html
+*/
 const fs = require('fs');
 const path = require('path');
 
