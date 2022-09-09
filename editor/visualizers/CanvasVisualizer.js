@@ -3,14 +3,14 @@ import Visualizer from './Visualizer.js';
 export default class CanvasVisualizer extends Visualizer {
   constructor(canvas) {
     super(canvas);
-    this.ctx = canvas.getContext("2d");
+    this.ctx = canvas.getContext('2d');
     this.temp = new Float32Array(1);
     this.resize(512, 512);
     this.type = 1;
   }
 
   resize(width, height) {
-    var canvas = this.canvas;
+    const canvas = this.canvas;
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     this.positions = new Float32Array(width);
@@ -26,11 +26,11 @@ export default class CanvasVisualizer extends Visualizer {
     this.position = 0;
     this.drawPosition = 0;
     this.drawCount = 0;
-    var canvas = this.canvas;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const canvas = this.canvas;
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  setEffects(sections) {
+  setEffects(/*sections*/) {
   }
 
   update(buffer, length) {
@@ -38,12 +38,12 @@ export default class CanvasVisualizer extends Visualizer {
       return;
     }
     // Yes I know this is dumb. I should just do the last 2 at most.
-    var s = 0;
-    var p = this.position;
-    var ps = this.positions;
+    let s = 0;
+    let p = this.position;
+    const ps = this.positions;
     while (length) {
-      var max = Math.min(length, this.width - p);
-      for (var i = 0; i < max; ++i) {
+      const max = Math.min(length, this.width - p);
+      for (let i = 0; i < max; ++i) {
         ps[p++] = buffer[s++];
       }
       p = p % this.width;
@@ -58,17 +58,17 @@ export default class CanvasVisualizer extends Visualizer {
     if (!this.type) {
       return;
     }
-    var count = Math.min(this.drawCount, this.width);
-    var dp = this.drawPosition;
-    var ctx = this.ctx;
-    var old = this.oldPositions;
-    var ps = this.positions;
-    var halfHeight = this.height / 2;
-    ctx.fillStyle = "rgb(255,0,0)";
+    let count = Math.min(this.drawCount, this.width);
+    let dp = this.drawPosition;
+    const ctx = this.ctx;
+    const old = this.oldPositions;
+    const ps = this.positions;
+    const halfHeight = this.height / 2;
+    ctx.fillStyle = 'rgb(255,0,0)';
     /* horizontal */
     while (count) {
       ctx.clearRect(dp, old[dp], 1, 1);
-      var newPos = Math.floor(-ps[dp] * halfHeight + halfHeight);
+      const newPos = Math.floor(-ps[dp] * halfHeight + halfHeight);
       ctx.fillRect(dp, newPos, 1, 1);
       old[dp] = newPos;
       dp = (dp + 1) % this.width;

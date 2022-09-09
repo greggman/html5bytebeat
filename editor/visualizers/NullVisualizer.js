@@ -5,16 +5,16 @@ export default class NullVisualizer extends Visualizer {
     super(canvas);
   }
 
-  resize(width, height) {
+  resize(/*width, height*/) {
   }
 
   reset() {
   }
 
-  setEffects(sections) {
+  setEffects(/*sections*/) {
   }
 
-  update(buffer, length) {
+  update(/*buffer, length*/) {
   }
 
   render() {

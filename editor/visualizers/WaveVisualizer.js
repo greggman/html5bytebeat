@@ -1,10 +1,11 @@
+/* global gl, tdl */
 import Visualizer from './Visualizer.js';
 // Fix?
 import ByteBeat from '../../src/ByteBeat.js';
 import WrappingStack from '../../src/WrappingStack.js';
 
 export default class WebGLVisualizer extends Visualizer {
-  constructor (canvas) {
+  constructor(canvas) {
     super(canvas);
     this.type = 1;
     this.temp = new Float32Array(1);
@@ -15,25 +16,25 @@ export default class WebGLVisualizer extends Visualizer {
           position: 0,
           time: 0,
           resolution: this.resolution,
-          color: new Float32Array([1, 0, 0, 1])
-        }
+          color: new Float32Array([1, 0, 0, 1]),
+        },
       },
       sample: {
         uniforms: {
           offset: 0,
           time: 0,
           resolution: this.resolution,
-          color: new Float32Array([0, 1, 0, 1])
-        }
+          color: new Float32Array([0, 1, 0, 1]),
+        },
       },
       data: {
         uniforms: {
           offset: 0,
           time: 0,
           resolution: this.resolution,
-          color: new Float32Array([0, 0, 1, 1])
-        }
-      }
+          color: new Float32Array([0, 0, 1, 1]),
+        },
+      },
     };
 
     const VERTEX_SHADER = WebGLRenderingContext.VERTEX_SHADER;
@@ -46,7 +47,7 @@ export default class WebGLVisualizer extends Visualizer {
         void main() {
           gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1);
         }
-      `
+      `,
     };
     this.effects.wave[FRAGMENT_SHADER] = {
       defaultSource: `
@@ -114,24 +115,24 @@ export default class WebGLVisualizer extends Visualizer {
   }
 
   resize(width, height) {
-    var canvas = this.canvas;
+    const canvas = this.canvas;
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     gl.viewport(0, 0, canvas.clientWidth, canvas.clientHeight);
-    var height = new tdl.primitives.AttribBuffer(1, width * 2);
-    var column = new tdl.primitives.AttribBuffer(1, width * 2);
-    for (var ii = 0; ii < width * 2; ++ii) {
+    height = new tdl.primitives.AttribBuffer(1, width * 2);
+    const column = new tdl.primitives.AttribBuffer(1, width * 2);
+    for (let ii = 0; ii < width * 2; ++ii) {
       height.setElement(ii, [Math.sin(ii / width * Math.PI * 2)]);
       column.setElement(ii, [(ii >> 1) / width]);
     }
-    var arrays = {
+    const arrays = {
       height: height,
-      column: column
-    }
-    var effects = this.effects;
-    var wave = effects.wave;
+      column: column,
+    };
+    const effects = this.effects;
+    const wave = effects.wave;
     if (!wave.model) {
-      var program = tdl.programs.loadProgram(
+      const program = tdl.programs.loadProgram(
           wave[gl.VERTEX_SHADER].defaultSource,
           wave[gl.FRAGMENT_SHADER].defaultSource);
       wave.model = new tdl.models.Model(program, arrays, {}, gl.LINES/*gl.LINE_STRIP*/ /*gl.POINTS*/);
@@ -139,10 +140,10 @@ export default class WebGLVisualizer extends Visualizer {
       wave.model.setBuffers(arrays, true);
     }
 
-    var data = effects.data;
+    const data = effects.data;
     if (!data.model) {
-      var tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
-      var arrays = tdl.primitives.createPlane(2, 2, 1, 1);
+      const tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
+      const arrays = tdl.primitives.createPlane(2, 2, 1, 1);
       // Don't need the normals.
       delete arrays.normal;
       delete arrays.texCoord;
@@ -151,11 +152,12 @@ export default class WebGLVisualizer extends Visualizer {
           [1, 0, 0, 0,
            0, 0, 1, 0,
            0, -1, 0, 0,
-           0, 0, 0, 1]);
-      var textures = {
+           0, 0, 0, 1,
+           ]);
+      const textures = {
           tex: tex,
       };
-      var program = tdl.programs.loadProgram(
+      const program = tdl.programs.loadProgram(
           data[gl.VERTEX_SHADER].defaultSource,
           data[gl.FRAGMENT_SHADER].defaultSource);
       data.model = new tdl.models.Model(program, arrays, textures);
@@ -168,7 +170,7 @@ export default class WebGLVisualizer extends Visualizer {
     this.sampleStack = new WrappingStack();
 
     this.dataWidth = 1024;
-    var dataBuf = new Uint8Array(this.dataWidth);
+    const dataBuf = new Uint8Array(this.dataWidth);
     this.dataPos = 0;
     this.dataPixel = new Uint8Array(1);
     this.dataTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -179,10 +181,10 @@ export default class WebGLVisualizer extends Visualizer {
     this.dataBuf = dataBuf;
     this.dataTime = 0;
 
-    var sample = effects.sample;
+    const sample = effects.sample;
     if (!sample.model) {
-      var tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
-      var arrays = tdl.primitives.createPlane(2, 2, 1, 1);
+      const tex = new tdl.textures.ExternalTexture(gl.TEXTURE_2D);
+      const arrays = tdl.primitives.createPlane(2, 2, 1, 1);
       // Don't need the normals.
       delete arrays.normal;
       delete arrays.texCoord;
@@ -191,11 +193,12 @@ export default class WebGLVisualizer extends Visualizer {
           [1, 0, 0, 0,
            0, 0, 1, 0,
            0, -1, 0, 0,
-           0, 0, 0, 1]);
-      var textures = {
+           0, 0, 0, 1,
+           ]);
+      const textures = {
           tex: tex,
       };
-      var program = tdl.programs.loadProgram(
+      const program = tdl.programs.loadProgram(
           sample[gl.VERTEX_SHADER].defaultSource,
           sample[gl.FRAGMENT_SHADER].defaultSource);
       sample.model = new tdl.models.Model(program, arrays, textures);
@@ -203,7 +206,7 @@ export default class WebGLVisualizer extends Visualizer {
     }
 
     this.sampleWidth = 1024;
-    var sampleBuf = new Uint8Array(this.sampleWidth);
+    const sampleBuf = new Uint8Array(this.sampleWidth);
     this.samplePos = 0;
     this.samplePixel = new Uint8Array(1);
     this.sampleTex.setParameter(gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -224,7 +227,7 @@ export default class WebGLVisualizer extends Visualizer {
 
   reset() {
     this.then = (new Date()).getTime() * 0.001;
-    for (var i = 0; i < this.height.numElements; ++i) {
+    for (let i = 0; i < this.height.numElements; ++i) {
       this.height.setElement(i, [0]);
     }
     this.position = 0;
@@ -232,7 +235,7 @@ export default class WebGLVisualizer extends Visualizer {
 
     this.dataTime = 0;
     this.dataPos = 0;
-    for (var i = 0; i < this.dataWidth; ++i) {
+    for (let i = 0; i < this.dataWidth; ++i) {
       this.dataBuf[i] = 0;
     }
     this.dataTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -242,7 +245,7 @@ export default class WebGLVisualizer extends Visualizer {
 
     this.sampleTime = 0;
     this.samplePos = 0;
-    for (var i = 0; i < this.sampleWidth; ++i) {
+    for (let i = 0; i < this.sampleWidth; ++i) {
       this.sampleBuf[i] = 0;
     }
     this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -282,8 +285,8 @@ export default class WebGLVisualizer extends Visualizer {
   }
 
   compileShaderIfPending(effect) {
-    var pendingVertexShader = effect[gl.VERTEX_SHADER].pending;
-    var pendingFragmentShader = effect[gl.FRAGMENT_SHADER].pending;
+    const pendingVertexShader = effect[gl.VERTEX_SHADER].pending;
+    const pendingFragmentShader = effect[gl.FRAGMENT_SHADER].pending;
 
     // If there was nothing pending exit
     if (pendingVertexShader === undefined && pendingFragmentShader === undefined) {
@@ -295,14 +298,14 @@ export default class WebGLVisualizer extends Visualizer {
     effect[gl.FRAGMENT_SHADER].pending = undefined;
 
     // If there was no change exit.
-    if (pendingVertexShader == effect[gl.VERTEX_SHADER].source &&
-        pendingFragmentShader == effect[gl.FRAGMENT_SHADER].source) {
+    if (pendingVertexShader === effect[gl.VERTEX_SHADER].source &&
+        pendingFragmentShader === effect[gl.FRAGMENT_SHADER].source) {
       //this.onCompileCallback(null);
       return false;
     }
 
     this.compiling = true;
-    var that = this;
+    const that = this;
     this.programBeingCompiled = tdl.programs.loadProgram(pendingVertexShader, pendingFragmentShader, function(error) {
       that.handleCompile(error, effect, pendingVertexShader, pendingFragmentShader);
     });
@@ -338,22 +341,22 @@ export default class WebGLVisualizer extends Visualizer {
       return;
     }
     // Yes I know this is dumb. I should just do the last 2 at most.
-    var dest = this.height.buffer;
-    var offset = 0;
-    var v = this.oneVerticalPixel;
-    var v2 = v * 2;
+    const dest = this.height.buffer;
+    let offset = 0;
+    const v = this.oneVerticalPixel;
+    const v2 = v * 2;
     while (length) {
-      var max = Math.min(length, this.width - this.position);
-      var d = this.position * 2;
-      var h1 = buffer[offset];
+      const max = Math.min(length, this.width - this.position);
+      let d = this.position * 2;
+      let h1 = buffer[offset];
       for (let i = 0; i < max; ++i) {
-        var h2 = buffer[++offset];
-        var dy = h1 - h2;
+        const h2 = buffer[++offset];
+        const dy = h1 - h2;
         dest[d++] = h1;
         dest[d++] = Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2));
         h1 = h2;
       }
-      var view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
+      const view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
       this.effects.wave.model.buffers.height.setRange(view, this.position * 4 * 2);
       this.position = (this.position + max) % this.width;
       length -= max;
@@ -365,15 +368,12 @@ export default class WebGLVisualizer extends Visualizer {
       return;
     }
 
-    gl.clearColor(0,0,0.3,1);
+    gl.clearColor(0, 0, 0.3, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    var effects = this.effects;
-    var wave = this.effects.wave;
-    var data = this.effects.data;
-    var sample = this.effects.sample;
+    const {wave, data} = this.effects;
 
-    var canvas = this.canvas;
+    const canvas = this.canvas;
     this.resolution[0] = canvas.width;
     this.resolution[1] = canvas.height;
 
@@ -383,20 +383,20 @@ export default class WebGLVisualizer extends Visualizer {
     this.dataPos = (this.dataPos + 1) % this.dataWidth;
 
     this.sampleTex.setParameter(gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    for (var ii = 0; ii < 2; ++ii) {
+    for (let ii = 0; ii < 2; ++ii) {
       this.samplePixel[0] = Math.round(byteBeat.getSampleForTime(this.sampleTime++, this.sampleContext, this.sampleStack) * 127) + 127;
       gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
       this.samplePos = (this.samplePos + 1) % this.sampleWidth;
     }
 
-    var now = (new Date()).getTime() * 0.001;
+    const now = (new Date()).getTime() * 0.001;
 
     data.uniforms.offset = this.dataPos / this.dataWidth;
     data.uniforms.time = now - this.then;
     data.model.drawPrep(data.uniforms);
     data.model.draw();
 
-    if (false) {
+    /*
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       sample.uniforms.offset = this.samplePos / this.sampleWidth;
@@ -404,7 +404,7 @@ export default class WebGLVisualizer extends Visualizer {
       sample.model.drawPrep(sample.uniforms);
       sample.model.draw();
       gl.disable(gl.BLEND);
-    }
+    */
 
     wave.uniforms.position = this.position / this.width;
     wave.uniforms.time = now - this.then;

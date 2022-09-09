@@ -17,10 +17,10 @@ export default class Visualizer {
   }
 
   handleCapture() {
-    var fn = this.captureCallback;
+    const fn = this.captureCallback;
     if (fn) {
       this.captureCallback = undefined;
       fn(this.canvas);
     }
   }
-};
+}
