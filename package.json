@@ -2,7 +2,7 @@
   "name": "bytebeat.js",
   "version": "1.0.0",
   "description": "a bytebeat library",
-  "module": "src/bytebeat.js",
+  "module": "src/ByteBeat.js",
   "engines": {
     "node": ">=12"
   },
