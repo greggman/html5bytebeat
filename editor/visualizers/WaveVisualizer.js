@@ -5,6 +5,10 @@ import Visualizer from './Visualizer.js';
 import ByteBeat from '../../src/ByteBeat.js';
 import WrappingStack from '../../src/WrappingStack.js';
 
+const colorRed = new Float32Array([1, 0, 0, 1]);
+const colorMagenta = new Float32Array([1, 0, 1, 1]);
+const colorGreen = new Float32Array([0, 1, 0, 1]);
+
 export default class WebGLVisualizer extends Visualizer {
   constructor(canvas) {
     super(canvas);
@@ -125,22 +129,27 @@ export default class WebGLVisualizer extends Visualizer {
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     const lineHeight = new Float32Array(width * 2);
     const column = new Float32Array(width * 2);
-    this.lineHeight = lineHeight;
     for (let ii = 0; ii < width * 2; ++ii) {
       lineHeight[ii] = Math.sin(ii / width * Math.PI * 2);
       column[ii] = (ii >> 1) / width;
     }
+    this.lineHeightL = lineHeight;
+    this.lineHeightR = lineHeight.slice();
     const arrays = {
       height: { numComponents: 1, data: lineHeight, },
       column: { numComponents: 1, data: column, },
     };
     const {wave, data, sample} = this.effects;
     if (!wave.bufferInfo) {
-      wave.bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+      wave.bufferInfoL = twgl.createBufferInfoFromArrays(gl, arrays);
+      wave.bufferInfoR = twgl.createBufferInfoFromArrays(gl, arrays);
     } else {
-      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfo.attribs.height, arrays.height);
-      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfo.attribs.column, arrays.column);
-      wave.bufferInfo.numElements = width * 2;
+      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfoL.attribs.height, arrays.height);
+      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfoL.attribs.column, arrays.column);
+      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfoR.attribs.height, arrays.height);
+      twgl.setAttribInfoBufferFromArray(gl, wave.bufferInfoR.attribs.column, arrays.column);
+      wave.bufferInfoL.numElements = width * 2;
+      wave.bufferInfoR.numElements = width * 2;
     }
 
     if (!data.bufferInfo) {
@@ -203,11 +212,13 @@ export default class WebGLVisualizer extends Visualizer {
   reset() {
     const gl = this.gl;
     this.then = performance.now() * 0.001;
-    for (let i = 0; i < this.lineHeight.length; ++i) {
-      this.lineHeight[i] = 0;
+    for (let i = 0; i < this.lineHeightL.length; ++i) {
+      this.lineHeightL[i] = 0;
+      this.lineHeightR[i] = 0;
     }
     this.position = 0;
-    twgl.setAttribInfoBufferFromArray(gl, this.effects.wave.bufferInfo.attribs.height, this.lineHeight);
+    twgl.setAttribInfoBufferFromArray(gl, this.effects.wave.bufferInfoL.attribs.height, this.lineHeightL);
+    twgl.setAttribInfoBufferFromArray(gl, this.effects.wave.bufferInfoR.attribs.height, this.lineHeightR);
 
     this.dataTime = 0;
     this.dataPos = 0;
@@ -230,19 +241,16 @@ export default class WebGLVisualizer extends Visualizer {
         gl.LUMINANCE, gl.UNSIGNED_BYTE, this.sampleBuf);
   }
 
-  update(buffer, length) {
-    if (!this.type) {
-      return;
-    }
+  updateBuffer(buffer, length, dest, position, bufferInfo) {
     const gl = this.gl;
     // Yes I know this is dumb. I should just do the last 2 at most.
-    const dest = this.lineHeight;
     let offset = 0;
     const v = this.oneVerticalPixel;
     const v2 = v * 2;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
     while (length) {
-      const max = Math.min(length, this.width - this.position);
-      let d = this.position * 2;
+      const max = Math.min(length, this.width - position);
+      let d = position * 2;
       let h1 = buffer[offset];
       for (let i = 0; i < max; ++i) {
         const h2 = buffer[++offset];
@@ -251,11 +259,24 @@ export default class WebGLVisualizer extends Visualizer {
         dest[d++] = Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2));
         h1 = h2;
       }
-      const view = new Float32Array(dest.buffer, this.position * 4 * 2, max * 2);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.effects.wave.bufferInfo.attribs.height.buffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, this.position * 4 * 2, view);
-      this.position = (this.position + max) % this.width;
+      const view = new Float32Array(dest.buffer, position * 4 * 2, max * 2);
+      gl.bufferSubData(gl.ARRAY_BUFFER, position * 4 * 2, view);
+      position = (position + max) % this.width;
       length -= max;
+    }
+    return position;
+  }
+
+  update(bufferL, bufferR, length) {
+    if (!this.type) {
+      return;
+    }
+    const position = this.position;
+    this.position = this.updateBuffer(bufferL, length, this.lineHeightL, position, this.effects.wave.bufferInfoL);
+    this.is2Channels = bufferL !== bufferR;
+    // do we have 2 channels?
+    if (this.is2Channels) {
+      this.updateBuffer(bufferR, length, this.lineHeightR, position, this.effects.wave.bufferInfoR);
     }
   }
 
@@ -304,16 +325,26 @@ export default class WebGLVisualizer extends Visualizer {
     }
     */
 
+    wave.uniforms.color = this.is2Channels ? colorMagenta : colorRed;
     wave.uniforms.position = this.position / this.width;
     wave.uniforms.time = now - this.then;
-    drawEffect(gl, wave);
+    drawEffect(gl, wave, wave.bufferInfoL);
+    if (this.is2Channels) {
+      wave.uniforms.color = colorGreen;
+
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      drawEffect(gl, wave, wave.bufferInfoR);
+      gl.disable(gl.BLEND);
+    }
 
     this.handleCapture();
   }
 }
 
-function drawEffect(gl, effect) {
-  const {programInfo, bufferInfo, uniforms, primitive} = effect;
+function drawEffect(gl, effect, bufferInfo) {
+  const {programInfo, uniforms, primitive} = effect;
+  bufferInfo = bufferInfo || effect.bufferInfo;
   gl.useProgram(programInfo.program);
   twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
   twgl.setUniforms(programInfo, uniforms);

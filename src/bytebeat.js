@@ -697,7 +697,7 @@ export default class ByteBeat {
     }
 
     if (this.visualizer) {
-      this.visualizer.update(buffer0, lastSample - 1);
+      this.visualizer.update(buffer0, buffer1, lastSample - 1);
     }
 
     this.time += dataLength;
