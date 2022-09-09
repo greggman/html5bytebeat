@@ -712,7 +712,7 @@ export default class ByteBeat {
   }
 
   getSampleForTime(time, context, stack, channel = 0) {
-    const divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
     if (this.functions[0].array) {
       const s = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
       return s[channel];
