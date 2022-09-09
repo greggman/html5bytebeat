@@ -1,13 +1,3 @@
-*~
-*.swp
-*.bat
-*.bak
-temp
-.mayaSwatches
-.git
-.svn
-.hg
 *.pyc
-*.orig
 .DS_Store
-.project
+node_modules
