@@ -108,6 +108,84 @@ const glitchToPostfix = (function() {
 
 }());
 
+const int8 = new Int8Array(1);
+const s_samplers = {
+  array: [
+    // case 0: // bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+        buffer0[i] = (s[0] & 255) / 127 - 1;
+        buffer1[i] = (s[1] & 255) / 127 - 1;
+      }
+    },
+    // case 1:  // floatbeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
+        buffer0[i] = s[0];
+        buffer1[i] = s[1];
+      }
+    },
+    // case 2:  // signed bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+        int8[0] = s[0];
+        buffer0[i] = int8[0] / 128;
+        int8[0] = s[1];
+        buffer1[i] = int8[0] / 128;
+      }
+    },
+  ],
+  twoChannels: [
+    // case 0: // bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+        buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+      }
+    },
+    // case 1:  // floatbeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+        buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+      }
+    },
+    // case 2:  // signed bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+        buffer0[i] = int8[0] / 128;
+        int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+        buffer1[i] = int8[0] / 128;
+      }
+    },
+  ],
+  oneChannel: [
+    // case 0: // bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+      }
+    },
+    // case 1: // floatbeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+      }
+    },
+    // case 2: // signed bytebeat
+    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+      for (let i = 0; i < lastSample; ++i) {
+        int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+        buffer0[i] = int8[0] / 128;
+      }
+    },
+  ],
+};
+
 export default class ByteBeat {
   constructor() {
     const that = this;
@@ -118,7 +196,6 @@ export default class ByteBeat {
     this.expandMode = 0;
     this.type = 0;
     this.expressionType = 0;
-    this.int8 = new Int8Array(1);
     this.functions = [
       {
         f: function(t) {
@@ -571,14 +648,12 @@ export default class ByteBeat {
   }
 
   process(dataLength, leftData, rightData) {
-    let time = this.convertToDesiredSampleRate(this.time);
+    const time = this.convertToDesiredSampleRate(this.time);
     const lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
     if (this.buffer0.length < lastSample) {
       this.buffer0 = new Float32Array(lastSample);
       this.buffer1 = new Float32Array(lastSample);
     }
-    const buffer0 = this.buffer0;
-    let buffer1;
     //
     const fn0 = this.functions[0].f;
     const fn0Array = this.functions[0].array;
@@ -587,82 +662,15 @@ export default class ByteBeat {
     const stack1 = this.stacks[1];
     const ctx0 = this.contexts[0];
     const ctx1 = this.contexts[1];
+    const buffer0 = this.buffer0;
+    const buffer1 = (fn0Array || fn1) ? this.buffer1 : buffer0;
     const extra = this.extra;
-    const int8 = this.int8;
-    const divisor = 1;//this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
 
-    if (fn0Array) {
-      buffer1 = this.buffer1;
-      switch (this.type) {
-        case 0: // bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = (s[0] & 255) / 127 - 1;
-            buffer1[i] = (s[1] & 255) / 127 - 1;
-          }
-          break;
-        case 1:  // floatbeat
-          for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
-            buffer0[i] = s[0];
-            buffer1[i] = s[1];
-          }
-          break;
-        case 2:  // signed bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-            int8[0] = s[0];
-            buffer0[i] = int8[0] / 128;
-            int8[0] = s[1];
-            buffer1[i] = int8[0] / 128;
-          }
-          break;
-      }
-    } else if (fn1) {
-      buffer1 = this.buffer1;
-      switch (this.type) {
-        case 0: // bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-            buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
-          }
-          break;
-        case 1:  // floatbeat
-          for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-            buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
-          }
-          break;
-        case 2:  // signed bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = int8[0] / 128;
-            int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
-            buffer1[i] = int8[0] / 128;
-          }
-          break;
-      }
-    } else {
-      buffer1 = this.buffer0;
-      switch (this.type) {
-        case 0: // bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-          }
-          break;
-        case 1: // floatbeat
-          for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-          }
-          break;
-        case 2: // signed bytebeat
-          for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = int8[0] / 128;
-          }
-          break;
-      }
-    }
+    const samplerGroup = fn0Array ? s_samplers.array : fn1 ? s_samplers.twoChannels : s_samplers.oneChannel;
+    const sampler = samplerGroup[this.type];
+    sampler(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample);
+
     if (dataLength) {
       const step = this.convertToDesiredSampleRate(dataLength) / dataLength;
       let ndx = 0;
@@ -719,8 +727,8 @@ export default class ByteBeat {
       case 1:
         return s;
       case 2:
-        this.int8[0] = s;
-        return this.int8[0] / 128;
+        int8[0] = s;
+        return int8[0] / 128;
       default:
         return 0;
     }
