@@ -313,15 +313,14 @@ function main() {
   controls.appendChild(beatTypeElem);
 
   expressionTypeElem = addSelection(["infix", "postfix(rpn)", "glitch", "function"], 0);
-  //expressionTypeElem = addSelection(["infix", "postfix(rpn)"], 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
     g_byteBeat.recompile();
   }, false);
   controls.appendChild(expressionTypeElem);
 
-  var sampleRates = [8000, 11000, 22000, 32000, 44100];
-  sampleRateElem = addSelection(["8kHz", "11kHz", "22kHz", "32kHz", "44kHz"], 0);
+  var sampleRates = [8000, 11000, 22000, 32000, 44100, 48000];
+  sampleRateElem = addSelection(["8kHz", "11kHz", "22kHz", "32kHz", "44kHz", "48kHz"], 0);
   sampleRateElem.addEventListener('change', function(event) {
     g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
   }, false);
@@ -765,6 +764,7 @@ function ByteBeat() {
     tiltX: 0,
     tiltY: 0,
     compass: 0,
+    sampleRate: 0,
   };
   this.postfixTemplate = $("postfix-template").text;
   this.stacks = [new WrappingStack(), new WrappingStack()];
@@ -1026,6 +1026,10 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
   }());
   var fnHeader = this.fnHeader
 
+  function is2NumberArray(v) {
+    return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
+  }
+
   function expressionStringToFn(x, extra, expressionType) {
     x = removeCommentsAndLineBreaks(x);
     // Translate a few things.
@@ -1040,23 +1044,28 @@ ByteBeat.prototype.setExpressions = function(expressions, extra) {
     evalExp = `${fnHeader}${x}`;
     var fp = new Function('stack', 'window', 'extra', evalExp);
     var f = fp(undefined, undefined, undefined);
-    // hack :(
-    if (expressionType === 3) {
-      f = f();
-    }
     var ctx = ByteBeat.makeContext();
 
     var stack = new WrappingStack();
     var tempExtra = Object.assign({}, extra);
-    var array = false;
+    // check function
+    var v = f(0, 0, stack, ctx, tempExtra);
+    if (typeof v === 'function') {
+      f = f();
+      v = f(0, 0, stack, ctx, tempExtra);
+    }
+    var array = is2NumberArray(v);
     for (var i = 0; i < 1000; i += 100) {
       var s = f(i, i, stack, ctx, tempExtra);
       if (i == 0) {
         log("stack: " + stack.sp());
       }
       //log("" + i + ": " + s);
-      if (Array.isArray(s) && s.length === 2 && typeof s[0] === 'number' && typeof s[1] === 'number') {
-        array = true;
+      if (typeof s === 'function') {
+        f = f();
+        s = 0;
+      }
+      if (is2NumberArray(s)) {
         continue;
       }
       if (typeof s != "number") {
@@ -1238,6 +1247,7 @@ ByteBeat.prototype.convertToDesiredSampleRate = function(rate) {
 
 ByteBeat.prototype.setDesiredSampleRate = function(rate) {
   this.desiredSampleRate = rate;
+  this.extra.sampleRate = rate;
 };
 
 ByteBeat.prototype.getDesiredSampleRate = function() {
@@ -1283,7 +1293,7 @@ ByteBeat.prototype.process = function(dataLength, leftData, rightData) {
   var ctx1 = this.contexts[1];
   var extra = this.extra;
   var int8 = this.int8;
-  var divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+  var divisor = 1;//this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
 
   if (fn0Array) {
     buffer1 = this.buffer1;

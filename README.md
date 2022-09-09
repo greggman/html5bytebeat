@@ -60,7 +60,7 @@ There 2 modes
 * Infix: Standard expressions eg. "`(t * 2) / 4`"
 * Postfix(rpn): Reverse Polish Notation eg "`t 2 * 4 /`"
 * glitch: glitch format or glitch urls.
-* function: Return a function. eg. "`t => (t * 2) / 4`"
+* function: Return a function. eg. "`return t => (t * 2) / 4`"
 
 **Infix** is standard JavaScript so all Math functions are available.
 Most math functions you can drop the "Math." part. In other words
@@ -90,6 +90,15 @@ These can be prefixed with "glitch://". For example
 <a href="https://github.com/erlehmann/libglitch/tree/master/tracks">There's
 a bunch more here</a>. I have a feeling there's a bug or 2 left for full glitch support
 
+### Function
+
+Expects a function body vs infix which expects an expression
+
+infix: `sin(t)`
+
+function: `return t => sin(t)`
+
+[See below](#Function)
 
 ### Postfix
 
@@ -106,6 +115,8 @@ Note the stack is only 256 elements deep. If you push 257 elements it wraps arou
 with a large value your pick will wrap around. The stack is neither cleared nor reset on each iteration
 of your function. Some postfix based bytebeat songs take advantage of this where each iteration leaves
 things on the stack for the next iteration.
+
+#### operators
 
 The postfix operators are
 
@@ -162,11 +173,11 @@ In other words `4 2 /` is 4 divided by 2.
 
 Pops the top of the stack, applies the binary negate to it, pushes the result.
 
-### Funcbeat
+### Function
 
-See [#Rant]
+See [#Rant].
 
-Funcbeat means you could write code that returns a function. The simplest example
+"function" means you could write code that returns a function. The simplest example
 might be
 
 ```js
@@ -202,7 +213,7 @@ But see [Rant](#Rant) why this is seems kind of missing the point.
 
 You can emit an array with 2 values for left and right channels. Eg.
 
-```
+```js
 [sin(t), sin(t / 2)]
 ```
 
@@ -211,17 +222,23 @@ You can emit an array with 2 values for left and right channels. Eg.
 Comments can be both // or /* */ style and I'd personally suggest
 you use comments for your name, the song's name, etc...
 
-There are several extra inputs available
+There are several extra inputs available:
+
+The current sample rate is available as `sampleRate`.
 
 The mouse position is available as `mouseX` and `mouseY`
 
-    sin(t * mouseX * 0.001) + cos(t * mouseY * 0.003)
+```js
+sin(t * mouseX * 0.001) + cos(t * mouseY * 0.003)
+```
 
 The size of the window is available `width` and `height`
 
 The orientation of a device may be available as `tiltX` and `tiltY`.
 
-    (sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
+```js
+(sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
+```
 
 Also note, using the comma operator you can write fairly arbitrary code. [See this example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=1&e=0&s=22000&bb=5d0000010058010000000000000017e07ce86fbd1ca9dedaaaf283d5ff76502fd7dadb76e5d882697d441ca3af61153f2f1380cbf89731ae302303c50ef1ebed677ad146c1f124dcf3cc109dd31ddd363d9d15d0d6a631f5f755297df9d98d614a051e4ed8cad8dae98b3b60d98a87f3ef147227e075cf005fc063cb9e4afe0ef1418c10607d6e7748e5c4477a20901c00ef5379b618214e7e2a2c8a538fec32de37b565c288aa49e52f2bcae7c1c9c474fcf1eb149f734180cccc153d360cb13e758ccf5d1eb9bebee221421a05b2a991f07c0b2ee2ed8ffa2ff5fc).
 
