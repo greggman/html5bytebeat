@@ -57,7 +57,7 @@ function main() {
   function resetToZero() {
     g_byteBeat.reset();
     g_visualizer.reset();
-    g_visualizer.render();
+    g_visualizer.render(g_byteBeat);
     updateTimeDisplay();
   }
 
@@ -227,9 +227,14 @@ function main() {
   }
   render();
 
+  function setSelected(element, selected) {
+    if (element) {
+      element.selected = selected;
+    }
+  }
   function setSelectOption(select, selectedIndex) {
-    select.options[select.selectedIndex].selected = false;
-    select.options[selectedIndex].selected = true;
+    setSelected(select.options[select.selectedIndex], false);
+    setSelected(select.options[selectedIndex], true);
   }
 
   function readURL(hash) {
