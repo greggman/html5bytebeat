@@ -117,6 +117,7 @@ function main() {
   sampleRateElem = addSelection(['8kHz', '11kHz', '22kHz', '32kHz', '44kHz', '48kHz'], 0);
   sampleRateElem.addEventListener('change', function(event) {
     g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
+    setURL();
   }, false);
   controls.appendChild(sampleRateElem);
 
@@ -238,15 +239,11 @@ function main() {
       const parts = args[i].split('=');
       data[parts[0]] = parts[1];
     }
-    const t = data.t !== undefined ? data.t : 1;
-    const e = data.e !== undefined ? data.e : 0;
-    const s = data.s !== undefined ? data.s : 8000;
-    for (let i = 0; i < sampleRates.length; ++i) {
-      if (s === sampleRates[i]) {
-        setSelectOption(sampleRateElem, i);
-        break;
-      }
-    }
+    const t = data.t !== undefined ? parseFloat(data.t) : 1;
+    const e = data.e !== undefined ? parseFloat(data.e) : 0;
+    const s = data.s !== undefined ? parseFloat(data.s) : 8000;
+    const rateNdx = sampleRates.indexOf(s);
+    setSelectOption(sampleRateElem, rateNdx);
     setSelectOption(beatTypeElem, t);
     setSelectOption(expressionTypeElem, e);
     g_byteBeat.setType(parseInt(t));
