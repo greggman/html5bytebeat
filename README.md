@@ -177,7 +177,7 @@ Pops the top of the stack, applies the binary negate to it, pushes the result.
 
 ### Function
 
-See [#Rant].
+See [Rant](#rant).
 
 "function" means you could write code that returns a function. The simplest example
 might be
@@ -209,7 +209,7 @@ return function(t) {
 }
 ```
 
-But see [Rant](#Rant) why this is seems kind of missing the point.
+But see [Rant](#rant) why this is seems kind of missing the point.
 
 ### Stereo
 
@@ -252,22 +252,27 @@ few options. When I built a live JavaScript version I just thought
 "you get an expression that takes time and returns a value". **The end**.
 
 A few obvious additions, at least to me, were floatbeat, because the Web Audio API itself
-takes floats. In fact I wrote that first. I just feed an expression that returns floats
+takes floats and IIRC some original C based thing that took a function expected floats.
+In fact I wrote that first. I just fed an expression that returns floats
 into the Web Audio API. I then manually converted a few beatbyte expressions by just
-putting `(original-bytebeat-exprssion) / 255 * 2 - 1`. The reason I didn't just stick
-with floatbeat is bytebeat expressions already existed and wanted people to be able to
-use them without having to understand how to convert, even though it's trivial.
+putting `(original-bytebeat-exprssion) / 127 - 1`.
 
-But now I see people have added *signed bytebeat*. WTF is the point? Any signed bytebeat
-can be turned in to regular bytebeat by just putting `+ 0x80` at the end of your expression.
-The entire point of bytebeat is to be self sufficient, to put what you need in the expression
-itself.
+The reason I didn't just stick with floatbeat is bytebeat expressions already
+existed and wanted people to be able to use them without having to understand
+how to convert, even though it's trivial.
 
-I then found a `funcbeat` in which instead of an expression you pass it a function body.
-The advantage is you can write actual code and declare other functions and data. For example:
+But now I see people have added *signed bytebeat*. What is the point? Any signed
+bytebeat can be turned in to regular bytebeat by just putting `+ 0x80` at the
+end of your expression. The entire point of bytebeat is to be self sufficient,
+to put what you need in the expression itself.
+
+I then found a `funcbeat` in which instead of an expression you pass it a
+function body. AFAICT the advantage is you can write actual code and declare
+other functions and data. For example:
 
 ```js
 const notes = [261.62, 329.628, 391.995, 523.25, 391.995, 329.628, 261.62, 261.62, 1, 1];
+
 function getNote(t) {
   const ndx = (t * 4 | 0) % notes.length;
   return note = notes[ndx];
@@ -279,17 +284,19 @@ return function(t) {
 }
 ```
 
-But again, WTF is the point? If you're going to write real code with no limits then why
-do it this way all? Just write code, no need to try to cram it into a bytebeat player.
+But again, What is the point? If you're going to write real code with no limits
+then why do it this way all? Just write code, no need to try to cram it into a
+bytebeat player.
 
-Then I found that some people had added a time divisor. For example, instead
-of `t` counting in samples it can count in seconds (fractional values). But again,
-WTF is the point? Why does this option need to exist when you can just divide `t`
-by the sample rate in the expression itself?
+Then I found that some people had added a time divisor. For example, instead of
+`t` counting in samples it can count in seconds (fractional values). But again,
+what is the point? Why does this option need to exist when you can just divide
+`t` by the sample rate in the expression itself?
 
-It'd be like if someone added various options for time. `t = sample`, `t = sample / sampleRate`, `t = sin(sammple)`, `t = sin(sample / sampleRate)` etc. The whole
-point is to **PUT THE MATH IN YOUR EXPRESSION!!!**. There's no need to add these
-options 😤
+It'd be like if someone added various options for time. `t = sample`,
+`t = sample / sampleRate`, `t = sin(sammple)`, `t = sin(sample / sampleRate)`,
+etc... The whole point is to **PUT THE MATH IN YOUR EXPRESSION!!!**. There is
+no need to add these options 😤
 
 &lt;/rant&gt; 😛
 
