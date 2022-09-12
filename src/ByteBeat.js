@@ -248,11 +248,6 @@ export default class ByteBeat {
     if (WebAudioAPI) {
       this.context = new WebAudioAPI();
       this.node = this.context.createScriptProcessor(4096, 2, 2);
-      //this.context = { };
-      //this.node = {
-      //  connect: function() { },
-      //  disconnect: function() { }
-      //};
       this.actualSampleRate = this.context.sampleRate;
       this.node.onaudioprocess = function(e) {
         const data = e.outputBuffer.getChannelData(0);

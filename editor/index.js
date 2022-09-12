@@ -87,15 +87,19 @@ function main() {
   playElem.addEventListener('click', playPause);
   controls.appendChild(playElem);
 
-  function addSelection(options, selectedIndex) {
-    const select = document.createElement('select');
-    for (let i = 0; i < options.length; ++i) {
+  function addOption(select, text, selected) {
       const option = document.createElement('option');
-      option.textContent = options[i];
-      if (i === selectedIndex) {
+      option.textContent = text;
+      if (selected) {
         option.selected = true;
       }
       select.appendChild(option);
+  }
+
+  function addSelection(options, selectedIndex) {
+    const select = document.createElement('select');
+    for (let i = 0; i < options.length; ++i) {
+      addOption(select, options[i], i === selectedIndex);
     }
     return select;
   }
@@ -267,7 +271,12 @@ function main() {
     const t = data.t !== undefined ? parseFloat(data.t) : 1;
     const e = data.e !== undefined ? parseFloat(data.e) : 0;
     const s = data.s !== undefined ? parseFloat(data.s) : 8000;
-    const rateNdx = sampleRates.indexOf(s);
+    let rateNdx = sampleRates.indexOf(s);
+    if (rateNdx < 0) {
+      rateNdx = sampleRates.length;
+      addOption(sampleRateElem, s);
+      sampleRates.push(s);
+    }
     setSelectOption(sampleRateElem, rateNdx);
     setSelectOption(beatTypeElem, t);
     setSelectOption(expressionTypeElem, e);
