@@ -642,6 +642,11 @@ export default class ByteBeat {
     return this.type;
   }
 
+  getNumChannels() {
+    const fn1 = (this.functions[1] || {}).f;
+    return (this.functions[0].array || fn1) ? 2 : 1;
+  }
+
   process(dataLength, leftData, rightData) {
     const time = this.convertToDesiredSampleRate(this.time);
     const lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
