@@ -57,13 +57,34 @@ a:link, a:visited, a:hover, a:active {
     width: 100%;
     height: 100%;
 }
-#foreground {
+#split {
     position: absolute;
-    left: 0px;
-    top: 0px;
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
+    display: flex;
     z-index: 2;
+}
+#songs {
+    flex: 0 0 auto;
+    max-width: 300px;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(64, 64, 64, 0.5);
+}
+#songs a {
+    list-style: circle outside;
+    margin-left: 1.5em;
+    display: list-item;
+}
+#songs a:hover {
+    color: magenta;
+}
+#foreground {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
 }
@@ -199,12 +220,16 @@ input {
 <div id="background">
   <canvas id="visualization"></canvas>
 </div>
-<div id="foreground">
-<div id="controls">
-</div>
-  <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
-<textarea id="code"></textarea>
-<pre id="debug" style="display: none;"></pre>
+<div id="split">
+  <div id="foreground">
+    <div id="controls"></div>
+    <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
+    <textarea id="code"></textarea>
+    <pre id="debug" style="display: none;"></pre>
+  </div>
+  <div id="songs">
+
+  </div>
 </div>
 <div id="savedialog">
   <div id="savecontainer">

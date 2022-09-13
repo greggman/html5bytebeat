@@ -23,6 +23,7 @@ let g_saveDialogInitialized = false;
 let g_screenshotCanvas;
 let g_screenshotContext;
 let g_debugElem;
+let g_ignoreHashChange;
 let playing = false;
 let codeElem;
 let helpElem;
@@ -40,10 +41,29 @@ let controls;
 let doNotSet = true;
 const g_slow = false;
 
+async function loadSongs() {
+  try {
+    const res = await fetch('editor/songs.json');
+    const songs = await res.json();
+    const base = `${window.location.origin}${window.location.pathname}`;
+    const songsElem = document.querySelector('#songs');
+    for (const {title, link} of songs) {
+      const elem = document.createElement('a');
+      elem.textContent = title;
+      elem.href = link.replace('https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html', base);
+      songsElem.appendChild(elem);
+    }
+  } catch (e) {
+    console.error(`could not load songs.json: ${e}`);
+  }
+}
+
 function main() {
   compressor = new LZMA( 'js/lzma_worker.js' );
   canvas = $('visualization');
   controls = $('controls');
+
+  loadSongs();
 
   g_byteBeat = new ByteBeat();
   if (!g_byteBeat.good) {
@@ -223,6 +243,15 @@ function main() {
       }
   });
 
+  window.addEventListener('hashchange', function(e) {
+    if (g_ignoreHashChange) {
+      g_ignoreHashChange = false;
+      return;
+    }
+    const hash = window.location.hash.substr(1);
+    readURL(hash);
+  });
+
   g_byteBeat.setOnCompile(handleCompileError);
   //g_visualizer.setOnCompile(handleCompileError);
 
@@ -286,8 +315,10 @@ function main() {
     g_byteBeat.setDesiredSampleRate(parseInt(s));
     const bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
+        doNotSet = true;
         codeElem.value = text;
         compile(text);
+        resetToZero();
       },
       dummyFunction);
     if (data.debug) {
@@ -501,6 +532,7 @@ function setURL() {
   }
   compressor.compress(codeElem.value, 1, function(bytes) {
     const hex = convertBytesToHex(bytes);
+    g_ignoreHashChange = true;
     window.location.replace(
       '#t=' + g_byteBeat.getType() +
       '&e=' + g_byteBeat.getExpressionType() +
