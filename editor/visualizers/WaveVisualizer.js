@@ -6,6 +6,8 @@ import ByteBeat from '../../src/ByteBeat.js';
 import WrappingStack from '../../src/WrappingStack.js';
 
 const colorRed = new Float32Array([1, 0, 0, 1]);
+const colorBlue = new Float32Array([0, 0, 1, 1]);
+const colorGray = new Float32Array([0.25, 0.25, 0.25, 1]);
 const colorMagenta = new Float32Array([1, 0, 1, 1]);
 const colorGreen = new Float32Array([0, 1, 0, 1]);
 
@@ -154,13 +156,18 @@ export default class WaveVisualizer extends Visualizer {
 
     if (!data.bufferInfo) {
       data.bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
-      const tex = twgl.createTexture(gl, {
-        src: [0],
-        format: gl.LUMINANCE,
-        minMag: gl.NEAREST,
-      });
-      data.uniforms.tex = tex;
-      this.dataTex = tex;
+      this.dataTex = [
+        twgl.createTexture(gl, {
+          src: [0],
+          format: gl.LUMINANCE,
+          minMag: gl.NEAREST,
+        }),
+        twgl.createTexture(gl, {
+          src: [0],
+          format: gl.LUMINANCE,
+          minMag: gl.NEAREST,
+        }),
+      ];
     }
 
     this.dataContext = ByteBeat.makeContext();
@@ -172,10 +179,12 @@ export default class WaveVisualizer extends Visualizer {
     const dataBuf = new Uint8Array(this.dataWidth);
     this.dataPos = 0;
     this.dataPixel = new Uint8Array(1);
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTex);
-    gl.texImage2D(
-        gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
-        gl.LUMINANCE, gl.UNSIGNED_BYTE, dataBuf);
+    for (const tex of this.dataTex) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(
+          gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
+          gl.LUMINANCE, gl.UNSIGNED_BYTE, dataBuf);
+    }
     this.dataBuf = dataBuf;
     this.dataTime = 0;
 
@@ -225,10 +234,12 @@ export default class WaveVisualizer extends Visualizer {
     for (let i = 0; i < this.dataWidth; ++i) {
       this.dataBuf[i] = 0;
     }
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTex);
-    gl.texImage2D(
-        gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
-        gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
+    for (const tex of this.dataTex) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(
+          gl.TEXTURE_2D, 0, gl.LUMINANCE, this.dataWidth, 1, 0,
+          gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataBuf);
+    }
 
     this.sampleTime = 0;
     this.samplePos = 0;
@@ -288,10 +299,28 @@ export default class WaveVisualizer extends Visualizer {
     this.resolution[0] = canvas.width;
     this.resolution[1] = canvas.height;
 
-    this.dataPixel[0] = Math.round(byteBeat.getSampleForTime(this.dataTime++, this.dataContext, this.dataStack) * 127) + 127;
-    gl.bindTexture(gl.TEXTURE_2D, this.dataTex);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
-    this.dataPos = (this.dataPos + 1) % this.dataWidth;
+    const now = (new Date()).getTime() * 0.001;
+
+    const numChannels = this.is2Channels ? 2 : 1;
+    for (let channel = 0; channel < numChannels; ++channel) {
+      this.dataPixel[0] = Math.round(byteBeat.getSampleForTime(this.dataTime++, this.dataContext, this.dataStack, channel) * 127) + 127;
+      gl.bindTexture(gl.TEXTURE_2D, this.dataTex[channel]);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, this.dataPos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.dataPixel);
+      this.dataPos = (this.dataPos + 1) % this.dataWidth;
+
+      data.uniforms.color = channel ? colorGray : colorBlue;
+      data.uniforms.tex = this.dataTex[channel];
+      data.uniforms.offset = this.dataPos / this.dataWidth;
+      data.uniforms.time = now - this.then;
+      if (channel) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+      }
+      drawEffect(gl, data);
+      if (channel) {
+        gl.disable(gl.BLEND);
+      }
+    }
 
     gl.bindTexture(gl.TEXTURE_2D, this.sampleTex);
     for (let ii = 0; ii < 2; ++ii) {
@@ -299,12 +328,6 @@ export default class WaveVisualizer extends Visualizer {
       gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
       this.samplePos = (this.samplePos + 1) % this.sampleWidth;
     }
-
-    const now = (new Date()).getTime() * 0.001;
-
-    data.uniforms.offset = this.dataPos / this.dataWidth;
-    data.uniforms.time = now - this.then;
-    drawEffect(gl, data);
 
     if (this.showSample) {
       const {sample} = this.effects;
