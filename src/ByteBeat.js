@@ -708,14 +708,16 @@ export default class ByteBeat {
 
   getSampleForTime(time, context, stack, channel = 0) {
     const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    let s = 0;
     if (this.functions[0].array) {
-      const s = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
-      return s[channel];
+      const ss = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
+      s = ss[channel];
+    } else {
+      if (!this.functions[1]) {
+        channel = 0;
+      }
+      s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
     }
-    if (!this.functions[1]) {
-      channel = 0;
-    }
-    const s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
     switch (this.type) {
       case 0:
         return (s & 255) / 127 - 1;
