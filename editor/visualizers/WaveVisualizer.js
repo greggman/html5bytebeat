@@ -30,8 +30,9 @@ export default class WaveVisualizer extends Visualizer {
             attribute float column;
             attribute float height;
             uniform float position;
+            uniform vec2 offset;
             void main() {
-              gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1);
+              gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1) + vec4(offset, 0, 0);
             }
           `,
           `
@@ -45,6 +46,7 @@ export default class WaveVisualizer extends Visualizer {
         uniforms: {
           position: 0,
           time: 0,
+          offset: [0, 0],
           resolution: this.resolution,
           color: new Float32Array([1, 0, 0, 1]),
         },
@@ -342,12 +344,21 @@ export default class WaveVisualizer extends Visualizer {
     wave.uniforms.color = this.is2Channels ? colorMagenta : colorRed;
     wave.uniforms.position = this.position / this.width;
     wave.uniforms.time = now - this.then;
+    const offsetX = 1 / gl.drawingBufferWidth;
+    wave.uniforms.offset[0] = 0;
     drawEffect(gl, wave, wave.bufferInfoL);
+
     if (this.is2Channels) {
+      wave.uniforms.offset[0] = offsetX;
+      drawEffect(gl, wave, wave.bufferInfoL);
+
       wave.uniforms.color = colorGreen;
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
+      wave.uniforms.offset[0] = 0;
+      drawEffect(gl, wave, wave.bufferInfoR);
+      wave.uniforms.offset[0] = offsetX;
       drawEffect(gl, wave, wave.bufferInfoR);
       gl.disable(gl.BLEND);
     }
