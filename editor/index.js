@@ -22,6 +22,7 @@ let g_saving = false;
 let g_saveDialogInitialized = false;
 let g_screenshotCanvas;
 let g_screenshotContext;
+let g_debugElem;
 let playing = false;
 let codeElem;
 let helpElem;
@@ -285,10 +286,14 @@ function main() {
     g_byteBeat.setDesiredSampleRate(parseInt(s));
     const bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
-      codeElem.value = text;
-      compile(text);
-    },
-    dummyFunction);
+        codeElem.value = text;
+        compile(text);
+      },
+      dummyFunction);
+    if (data.debug) {
+      g_debugElem = document.querySelector('#debug');
+      g_debugElem.style.display = '';
+    }
   }
 
   function onWindowResize(/*event*/) {

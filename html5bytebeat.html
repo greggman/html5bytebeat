@@ -177,6 +177,14 @@ input {
   border: 0.2em solid blue;
   border-radius: 0.2em;
 }
+#debug {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 0.5em;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #0F0
+}
 @media screen and (max-width: 700px) {
   #startButton {
     font-size: 48pt;
@@ -196,6 +204,7 @@ input {
 </div>
   <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
 <textarea id="code"></textarea>
+<pre id="debug" style="display: none;"></pre>
 </div>
 <div id="savedialog">
   <div id="savecontainer">
