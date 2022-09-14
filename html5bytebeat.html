@@ -38,6 +38,11 @@
 <script src="js/lzma.js"></script>
 <script src="js/wavmaker.js"></script>
 <style>
+:root {
+  /* This is a hack just to make the songs button stay on top right
+     and other buttons wrap */
+  --show-songs-width: 7em;
+}
 html, body {
     width: 100%;
     height: 100%;
@@ -50,17 +55,7 @@ a:link, a:visited, a:hover, a:active {
   color: white;
   text-decoration: none;
 }
-#background {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    width: 100%;
-    height: 100%;
-}
 #split {
-    position: absolute;
-    left: 0;
-    top: 0;
     width: 100%;
     height: 100%;
     display: flex;
@@ -78,11 +73,32 @@ a:link, a:visited, a:hover, a:active {
     margin-left: 1.5em;
     display: list-item;
 }
+#songs a:nth-child(odd) {
+  background-color: rgba(0, 0, 0, 0.2);
+}
 #songs a:hover {
     color: magenta;
 }
+#main {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+#showSongs {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: var(--show-songs-width);
+}
+#background {
+    width: 100%;
+    height: 100%;
+}
 #foreground {
-    flex: 1 1 auto;
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
     display: flex;
@@ -100,7 +116,7 @@ a:link, a:visited, a:hover, a:active {
   color: #F00;
 }
 #controls {
-  /* */
+  margin-right: var(--show-songs-width);
 }
 #code {
     flex: 1 1 auto;
@@ -128,8 +144,9 @@ textarea:focus {
     outline: 0; /* this removes browser-side outline */
 }
 
-button, select, .buttonstyle {
+button, select, .buttonstyle, #showSongs {
     padding: 8px 12px 8px 12px;
+    white-space: pre;
     border: none;
     border-radius: 5px;
     margin-right: 5px;
@@ -138,6 +155,7 @@ button, select, .buttonstyle {
     background-color: rgba(0, 0, 0, 0.5);
     font-family: Monospace;
     font-size: 12px;
+    height: 32px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -217,20 +235,22 @@ input {
 </style>
 </head>
 <body>
-<div id="background">
-  <canvas id="visualization"></canvas>
-</div>
 <div id="split">
-  <div id="foreground">
-    <div id="controls"></div>
-    <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
-    <textarea id="code"></textarea>
-    <pre id="debug" style="display: none;"></pre>
+  <div id="main">
+    <div id="background">
+      <canvas id="visualization"></canvas>
+    </div>
+    <div id="foreground">
+      <div id="controls"></div>
+      <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
+      <textarea id="code"></textarea>
+      <pre id="debug" style="display: none;"></pre>
+    </div>
   </div>
-  <div id="songs">
-
+  <div style="display: none;" id="songs">
   </div>
 </div>
+<button id="showSongs"> ▶ beats</button>
 <div id="savedialog">
   <div id="savecontainer">
     <div id="saveform">

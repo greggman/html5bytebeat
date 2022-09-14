@@ -38,10 +38,11 @@ let compileStatusElem;
 let canvas;
 let compressor;
 let controls;
-let doNotSet = true;
+let doNotSetURL = true;
 const g_slow = false;
 
 async function loadSongs() {
+  const showSongsElem = document.querySelector('#showSongs');
   try {
     const res = await fetch('editor/songs.json');
     const songs = await res.json();
@@ -53,8 +54,14 @@ async function loadSongs() {
       elem.href = link.replace('https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html', base);
       songsElem.appendChild(elem);
     }
+    showSongsElem.addEventListener('click', () => {
+      const show = !!songsElem.style.display;
+      songsElem.style.display = show ? '' : 'none';
+      showSongsElem.textContent = show ? '▼ beats' : '▶ beats';
+    });
   } catch (e) {
     console.error(`could not load songs.json: ${e}`);
+    showSongsElem.style.display = 'none';
   }
 }
 
@@ -243,7 +250,7 @@ function main() {
       }
   });
 
-  window.addEventListener('hashchange', function(e) {
+  window.addEventListener('hashchange', function() {
     if (g_ignoreHashChange) {
       g_ignoreHashChange = false;
       return;
@@ -315,7 +322,7 @@ function main() {
     g_byteBeat.setDesiredSampleRate(parseInt(s));
     const bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
-        doNotSet = true;
+        doNotSetURL = true;
         codeElem.value = text;
         compile(text);
         resetToZero();
@@ -526,8 +533,8 @@ function convertBytesToHex(byteArray) {
 }
 
 function setURL() {
-  if (doNotSet) {
-    doNotSet = false;
+  if (doNotSetURL) {
+    doNotSetURL = false;
     return;
   }
   compressor.compress(codeElem.value, 1, function(bytes) {

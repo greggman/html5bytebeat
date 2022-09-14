@@ -1,0 +1,35 @@
+on: issue_comment
+
+jobs:
+  issue_commented:
+    name: gather-songs
+    if: ${{ !github.event.issue.pull_request }}
+    if: ${{ github.event.issue.number == "17" }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🍔🍟🥤
+        uses: actions/checkout@v2.3.1
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 😂
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Get Songs 🎶
+        run: |
+          npm run update-songs
+        env:
+          NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit Songs 💮
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update Songs
+          branch: master
+          file_pattern: editor/songs.json
+          commit_user_name: update-songs-bot
+          commit_author: update-songs-bot <actions@github.com>
+

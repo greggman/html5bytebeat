@@ -7,7 +7,8 @@
     "node": ">=12"
   },
   "scripts": {
-    "eslint": "eslint src/**/*.js editor/**/*.js"
+    "eslint": "eslint src/**/*.js editor/**/*.js",
+    "update-songs": "node build/update-songs.js"
   },
   "files": [
     "src/**"
