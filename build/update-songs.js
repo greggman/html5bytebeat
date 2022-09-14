@@ -21,12 +21,13 @@ async function main() {
     issue_number: '17',
   });
 
-  const linkRE = /\[(.*?)\]\((https:\/\/greggman\.com\/downloads\/examples\/html5bytebeat\/html5bytebeat\.html#.*?)\)/g
+  const linkRE = /\[(.*?)\]\((https:\/\/greggman\.com\/downloads\/examples\/html5bytebeat\/html5bytebeat\.html#.*?)\)/g;
   const songs = [];
-  for (const {body, reactions} of comments) {
+  for (const {body, reactions, user} of comments) {
     const results = [...body.matchAll(linkRE)];
+    const {login, id} = user;
     songs.push(...results.map(([, title, link]) => {
-      return {title, link, reactions, groupSize: results.length};
+      return {title, link, reactions, groupSize: results.length, user: {login, id}};
     }));
   }
 
