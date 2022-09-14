@@ -25,11 +25,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit Songs 💮
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v4.14.1
         with:
           commit_message: Update Songs
           branch: master
           file_pattern: editor/songs.json
           commit_user_name: update-songs-bot
+          commit_user_email: update-song-bot@github.org
           commit_author: update-songs-bot <actions@github.com>
 
