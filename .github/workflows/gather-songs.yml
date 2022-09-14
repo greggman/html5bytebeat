@@ -18,6 +18,7 @@ jobs:
 
       - name: Get Songs 🎶
         run: |
+          npm ci
           npm run update-songs
         env:
           NUMBER: ${{ github.event.issue.number }}
