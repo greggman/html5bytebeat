@@ -23,10 +23,10 @@ async function main() {
 
   const linkRE = /\[(.*?)\]\((https:\/\/greggman\.com\/downloads\/examples\/html5bytebeat\/html5bytebeat\.html#.*?)\)/g
   const songs = [];
-  for (const comment of comments) {
-    const results = [...comment.body.matchAll(linkRE)];
+  for (const {body, reactions} of comments) {
+    const results = [...body.matchAll(linkRE)];
     songs.push(...results.map(([, title, link]) => {
-      return {title, link};
+      return {title, link, reactions, groupSize: results.length};
     }));
   }
 
