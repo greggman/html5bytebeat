@@ -44,7 +44,9 @@ const g_slow = false;
 async function loadSongs() {
   const showSongsElem = document.querySelector('#showSongs');
   try {
-    const res = await fetch('editor/songs.json');
+    // const url = 'editor/songs.json';
+    const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
+    const res = await fetch(url);
     const songs = await res.json();
     const base = `${window.location.origin}${window.location.pathname}`;
     const songsElem = document.querySelector('#songs');
