@@ -4,7 +4,7 @@ jobs:
   issue_commented:
     name: gather-songs
     if: ${{ !github.event.issue.pull_request }}
-    if: ${{ github.event.issue.number == "17" }}
+    if: ${{ github.event.issue.number == 17 }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🍔🍟🥤
