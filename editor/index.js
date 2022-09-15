@@ -44,14 +44,20 @@ const g_slow = false;
 async function loadSongs() {
   const showSongsElem = document.querySelector('#showSongs');
   try {
-    // const url = 'editor/songs.json';
-    const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
+    const url = 'editor/songs.json';
+    // const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
     const res = await fetch(url);
     const songs = await res.json();
     const base = `${window.location.origin}${window.location.pathname}`;
     const songsElem = document.querySelector('#songs');
-    for (const {title, link} of songs) {
+    songs.sort((a, b) => {
+      const scoreA = score(a);
+      const scoreB = score(b);
+      return Math.sign(scoreB - scoreA);
+    });
+    for (const {title, link/*, user*/} of songs) {
       const elem = document.createElement('a');
+      //elem.textContent = `${user.login}:${title}`;
       elem.textContent = title;
       elem.href = link.replace('https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html', base);
       songsElem.appendChild(elem);
@@ -65,6 +71,16 @@ async function loadSongs() {
     console.error(`could not load songs.json: ${e}`);
     showSongsElem.style.display = 'none';
   }
+}
+
+function score({user, reactions, groupSize}) {
+  const thePTB = 234804;
+  return (user.id === thePTB ? 1000000 : 0) +
+      (reactions['+1'] +
+       reactions['laugh'] +
+       reactions['heart'] +
+       reactions['hooray'] -
+       reactions['-1']) / groupSize;
 }
 
 function main() {
