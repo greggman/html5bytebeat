@@ -2,11 +2,11 @@
 module.exports = {
   'env': {
     'browser': true,
-    'es6': true,
+    'es2022': true,
   },
   'parserOptions': {
     'sourceType': 'module',
-    'ecmaVersion': 8,
+    'ecmaVersion': 'latest',
   },
   'plugins': [
     'eslint-plugin-html',
