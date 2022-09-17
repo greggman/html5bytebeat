@@ -64,8 +64,8 @@ function valueOrDefault(v, defaultV) {
 async function loadSongs() {
   const showSongsElem = document.querySelector('#showSongs');
   try {
-    const url = 'editor/songs.json';
-    // const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
+    //const url = 'editor/songs.json';
+    const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
     const res = await fetch(url);
     const songs = await res.json();
     const localBase = `${window.location.origin}${window.location.pathname}`;
