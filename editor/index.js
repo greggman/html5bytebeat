@@ -5,6 +5,7 @@ import WrappingStack from '../src/WrappingStack.js';
 import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
+import {createElem as el} from './elem.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -41,6 +42,25 @@ let controls;
 let doNotSetURL = true;
 const g_slow = false;
 
+const s_beatTypes = ['bytebeat', 'floatbeat', 'signed bytebeat'];
+function typeParamToTypeName(s) {
+  return s_beatTypes[parseInt(s)];
+}
+
+const s_expressionTypes = ['infix', 'postfix(rpn)', 'glitch', 'function'];
+function expressionTypeParamToExpressionName(s) {
+  return s_expressionTypes[parseInt(s)];
+}
+
+function sampleRateParamToSampleRate(s) {
+  const sampleRate = parseInt(s);
+  return `${sampleRate / 1000 | 0}k`;
+}
+
+function valueOrDefault(v, defaultV) {
+  return v === undefined ? defaultV : v;
+}
+
 async function loadSongs() {
   const showSongsElem = document.querySelector('#showSongs');
   try {
@@ -48,20 +68,45 @@ async function loadSongs() {
     // const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
     const res = await fetch(url);
     const songs = await res.json();
-    const base = `${window.location.origin}${window.location.pathname}`;
+    const localBase = `${window.location.origin}${window.location.pathname}`;
+    const origBase = 'https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html';
     const songsElem = document.querySelector('#songs');
-    songs.sort((a, b) => {
+
+    const sortedSongs = songs.slice().sort((a, b) => {
       const scoreA = score(a);
       const scoreB = score(b);
       return Math.sign(scoreB - scoreA);
     });
-    for (const {title, link/*, user*/} of songs) {
-      const elem = document.createElement('a');
-      //elem.textContent = `${user.login}:${title}`;
-      elem.textContent = title;
-      elem.href = link.replace('https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html', base);
-      songsElem.appendChild(elem);
+
+    const categories = {};
+    for (const {title, link} of sortedSongs) {
+      const url = new URL(link);
+      const q = Object.fromEntries(new URLSearchParams(url.hash.substring(1)).entries());
+      const type = typeParamToTypeName(valueOrDefault(q.t, 1));
+      const expressionType = expressionTypeParamToExpressionName(valueOrDefault(q.e, 0));
+      const sampleRate = sampleRateParamToSampleRate(valueOrDefault(q.s, 8000));
+      const subCategory = categories[type] || {};
+      categories[type] = subCategory;
+      const subSongs = subCategory[expressionType] || [];
+      subCategory[expressionType] = subSongs;
+      subSongs.push({title, link, sampleRate});
     }
+
+    for (const [category, subCategories] of Object.entries(categories)) {
+      const details = el('details', {className: 'category', open: true}, [
+          el('summary', {textContent: category}),
+          el('div', {}, [...Object.entries(subCategories)].map(([subCategory, songs]) =>
+            el('details', {className: 'sub-category', open: true}, [
+              el('summary', {textContent: subCategory}),
+              el('div', {}, songs.map(({title, link, sampleRate}) => {
+                return el('a', {href: link.replace(origBase, localBase), textContent: `${title} (${sampleRate})`});
+              })),
+            ]),
+          )),
+      ]);
+      songsElem.appendChild(details);
+    }
+
     showSongsElem.addEventListener('click', () => {
       const show = !!songsElem.style.display;
       songsElem.style.display = show ? '' : 'none';
@@ -150,14 +195,14 @@ function main() {
     return select;
   }
 
-  beatTypeElem = addSelection(['bytebeat', 'floatbeat', 'signed bytebeat'], 0);
+  beatTypeElem = addSelection(s_beatTypes, 0);
   beatTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setType(event.target.selectedIndex);
     setURL();
   }, false);
   controls.appendChild(beatTypeElem);
 
-  expressionTypeElem = addSelection(['infix', 'postfix(rpn)', 'glitch', 'function'], 0);
+  expressionTypeElem = addSelection(s_expressionTypes, 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
     g_byteBeat.recompile();
