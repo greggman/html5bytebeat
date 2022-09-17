@@ -465,10 +465,12 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     };
   }
 
+  // TODO: replace
   setProperties(data) {
     this.byteBeat.setProperties(data);
   }
 
+  // TODO: replace
   setExtra(data) {
     this.byteBeat.setExtra(data);
   }
@@ -487,7 +489,23 @@ registerProcessor('beat-processor', BeatWorkletProcessor);
 `;
 const workerURL = URL.createObjectURL(new Blob([beatProcessorJS], {type: 'application/javascript'}));
 
-
+// This class is the public interface for ByteBeat support.
+// It manages 2 instances of a `ByteBeatProcessor`. One
+// lives locally (this.byteBeat). It's point is to be available
+// for the visualizer. The other lives in an AudioWorkletProcessor.
+//
+// This class needs to keep both ByteBeatProcessors up to
+// date with the latest settings. It also compiles the
+// user's expressions. Only if it succeeds does it pass those
+// expressions on to the two ByteBeat instances.
+//
+// TODO:
+//   * I should split this into multiple classes. One to compile
+//     expressions and another to manage the audio
+//   * It would arguably be better if all this did is manage
+//     the AudioWorkletNode/AudioWorkletProcessor. That would
+//     make it easier to plug into someone else's code without
+//     needed tons of options
 export default class ByteBeat {
   constructor() {
     this.postfixTemplate = `
@@ -529,12 +547,15 @@ export default class ByteBeat {
       },
     };
 
-    // TODO: rename - this is the previous expressions so we don't
-    // double compile
+    // This is the previous expressions so we don't double compile
     this.expressions = [];
 
     // TODO: add 'makeExtra'. This is needed at compile time
     this.extra = {};
+    this.time = 0;
+    this.startTime = performance.now();   // time since the song started playing
+    this.pauseTime = this.startTime;      // time since the song was paused
+    this.connected = false;               // whether or not we're playing the bytebeat
 
     const context = new AudioContext();
     this.context = context;
@@ -549,6 +570,7 @@ export default class ByteBeat {
       });
 
     const analyser = context.createAnalyser();
+    analyser.maxDecibels = -1;
     this.analyser = analyser;
 
     // Make a buffer to receive the audio data
@@ -581,12 +603,12 @@ export default class ByteBeat {
     this._sendExtra({width, height});
   }
 
-  setVisualizer(visualizer) {
-    this.visualizer = visualizer;
-  }
-
   reset() {
     this._sendProperties({time: 0});
+    this.byteBeat.reset();
+    this.time = 0;
+    this.startTime = performance.now();
+    this.pauseTime = this.startTime;
   }
 
   resume(callback) {
@@ -599,7 +621,8 @@ export default class ByteBeat {
   }
 
   getTime() {
-    return this.convertToDesiredSampleRate(this.time);
+    const time = this.connected ? performance.now() : this.pauseTime;
+    return (time - this.startTime) * 0.001 * this.byteBeat.getDesiredSampleRate() | 0;
   }
 
   setOnCompile(callback) {
@@ -906,7 +929,10 @@ export default class ByteBeat {
   }
 
   play() {
-    if (this.node) {
+    if (this.node && !this.connected) {
+      const elapsedPauseTime = performance.now() - this.pauseTime;
+      this.startTime += elapsedPauseTime;
+      this.connected = true;
       this.startOnUserGesture();
       this.node.connect(this.analyser);
       this.analyser.connect(this.context.destination);
@@ -914,7 +940,9 @@ export default class ByteBeat {
   }
 
   pause() {
-    if (this.node) {
+    if (this.node && this.connected) {
+      this.connected = false;
+      this.pauseTime = performance.now();
       this.node.disconnect();
     }
   }
