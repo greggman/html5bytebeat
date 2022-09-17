@@ -109,218 +109,84 @@ const glitchToPostfix = (function() {
 }());
 
 const int8 = new Int8Array(1);
-const s_samplers = {
-  array: [
-    // case 0: // bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-        buffer0[i] = (s[0] & 255) / 127 - 1;
-        buffer1[i] = (s[1] & 255) / 127 - 1;
-      }
-    },
-    // case 1:  // floatbeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
-        buffer0[i] = s[0];
-        buffer1[i] = s[1];
-      }
-    },
-    // case 2:  // signed bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-        int8[0] = s[0];
-        buffer0[i] = int8[0] / 128;
-        int8[0] = s[1];
-        buffer1[i] = int8[0] / 128;
-      }
-    },
-  ],
-  twoChannels: [
-    // case 0: // bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-        buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
-      }
-    },
-    // case 1:  // floatbeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-        buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
-      }
-    },
-    // case 2:  // signed bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-        buffer0[i] = int8[0] / 128;
-        int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
-        buffer1[i] = int8[0] / 128;
-      }
-    },
-  ],
-  oneChannel: [
-    // case 0: // bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-      }
-    },
-    // case 1: // floatbeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-      }
-    },
-    // case 2: // signed bytebeat
-    function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
-      for (let i = 0; i < lastSample; ++i) {
-        int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-        buffer0[i] = int8[0] / 128;
-      }
-    },
-  ],
-};
 
-export default class ByteBeat {
-  constructor() {
-    const that = this;
-    this.buffer0 = new Float32Array(4096);
-    this.buffer1 = new Float32Array(4096);
-    this.desiredSampleRate = 8000;
-    this.time = 0;
-    this.expandMode = 0;
-    this.type = 0;
-    this.expressionType = 0;
-    this.functions = [
-      {
-        f: function(t) {
-          return Math.sin(t) * 0.1;
-        },
-        array: false,
-      },
-    ];
-    this.contexts = [ByteBeat.makeContext(), ByteBeat.makeContext()];
-    this.expressions = ['Math.sin(t) * 0.1'];
-    this.extra = {
-      mouseX: 0,
-      mouseY: 0,
-      width: 1,
-      height: 1,
-      tiltX: 0,
-      tiltY: 0,
-      compass: 0,
-      sampleRate: 0,
-    };
-    this.postfixTemplate = `
-      return function(t, i, stack, window, extra) {
-        $(exp)
-      };
-    `;
-    this.stacks = [new WrappingStack(), new WrappingStack()];
-
-    window.addEventListener('mousemove', function(event) {
-      const extra = that.extra;
-      extra.mouseX = event.clientX;
-      extra.mouseY = event.clientY;
-    }, true);
-
-    if (window.DeviceOrientationEvent) {
-      // Listen for the deviceorientation event and handle the raw data
-      window.addEventListener('deviceorientation', function(eventData) {
-        const extra = that.extra;
-        // gamma is the left-to-right tilt in degrees, where right is positive
-        extra.tiltX = eventData.gamma;
-
-        // beta is the front-to-back tilt in degrees, where front is positive
-        extra.tiltY = eventData.beta;
-
-        // alpha is the compass direction the device is facing in degrees
-        extra.compass = eventData.alpha;
-      }, false);
-    }
-
-    const WebAudioAPI = window.AudioContext || window.webkitAudioContext || window.mozAudioContext || window.oAudioContext || window.msAudioContext;
-    if (WebAudioAPI) {
-      this.context = new WebAudioAPI();
-      this.node = this.context.createScriptProcessor(4096, 2, 2);
-      this.actualSampleRate = this.context.sampleRate;
-      this.node.onaudioprocess = function(e) {
-        const data = e.outputBuffer.getChannelData(0);
-        that.process(data.length, data,
-                     e.outputBuffer.getChannelData(1));
-      };
-      this.good = true;
-    } else {
-      const audio = new Audio();
-      this.audio = audio;
-      if (!audio.mozSetup) {
-        return;
-      }
-      this.good = true;
-
-      function AudioDataDestination(sampleRate, readFn) {
-        // Initialize the audio output.
-        const audio = new Audio();
-        const channels = 2;
-        audio.mozSetup(channels, sampleRate);
-
-        let currentWritePosition = 0;
-        const preBufferSize = sampleRate * channels / 2; // buffer 500ms
-        let tail = null;
-        let tailPosition;
-
-        // The function called with regular interval to populate
-        // the audio output buffer.
-        setInterval(function() {
-          let written;
-          // Check if some data was not written in previous attempts.
-          if (tail) {
-            written = audio.mozWriteAudio(tail.subarray(tailPosition));
-            currentWritePosition += written;
-            tailPosition += written;
-            if (tailPosition < tail.length) {
-              // Not all the data was written, saving the tail...
-              return; // ... and exit the function.
-            }
-            tail = null;
-          }
-
-          // Check if we need add some data to the audio output.
-          const currentPosition = audio.mozCurrentSampleOffset();
-          const available = currentPosition + preBufferSize - currentWritePosition;
-          if (available > 0) {
-            // Request some sound data from the callback function.
-            const soundData = new Float32Array(available);
-            readFn(soundData);
-
-            // Writing the data.
-            written = audio.mozWriteAudio(soundData);
-            if (written < soundData.length) {
-              // Not all the data was written, saving the tail.
-              tail = soundData;
-              tailPosition = written;
-            }
-            currentWritePosition += written;
-          }
-        }, 100);
-      }
-
-      this.actualSampleRate = 44100;//this.desiredSampleRate;
-      // fix!
-      // eslint-disable-next-line no-unused-vars
-      const audioDestination = new AudioDataDestination(this.actualSampleRate, function(buffer) {
-        // eslint-disable-next-line no-undef
-        if (playing) {
-          that.process(buffer.length >> 1, buffer);
+class ByteBeatProcessor {
+  static s_samplers = {
+    array: [
+      // case 0: // bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = (s[0] & 255) / 127 - 1;
+          buffer1[i] = (s[1] & 255) / 127 - 1;
         }
-      });
-    }
-  }
+      },
+      // case 1:  // floatbeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
+          buffer0[i] = s[0];
+          buffer1[i] = s[1];
+        }
+      },
+      // case 2:  // signed bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          int8[0] = s[0];
+          buffer0[i] = int8[0] / 128;
+          int8[0] = s[1];
+          buffer1[i] = int8[0] / 128;
+        }
+      },
+    ],
+    twoChannels: [
+      // case 0: // bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+          buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+        }
+      },
+      // case 1:  // floatbeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+          buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+        }
+      },
+      // case 2:  // signed bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = int8[0] / 128;
+          int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+          buffer1[i] = int8[0] / 128;
+        }
+      },
+    ],
+    oneChannel: [
+      // case 0: // bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+        }
+      },
+      // case 1: // floatbeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+        }
+      },
+      // case 2: // signed bytebeat
+      function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+        for (let i = 0; i < lastSample; ++i) {
+          int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[i] = int8[0] / 128;
+        }
+      },
+    ],
+  };
 
   static makeContext() {
     return {
@@ -333,9 +199,386 @@ export default class ByteBeat {
     };
   }
 
+  static is2NumberArray(v) {
+    return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
+  }
+
+  static expressionStringToFn(evalExp, extra, test) {
+    // eslint-disable-next-line no-new-func
+    const fp = new Function('stack', 'window', 'extra', evalExp);
+    let f = fp(undefined, undefined, undefined);
+    const ctx = ByteBeatProcessor.makeContext();
+
+    const stack = new WrappingStack();
+    const tempExtra = Object.assign({}, extra);
+    // check function
+    let v = f(0, 0, stack, ctx, tempExtra);
+    if (typeof v === 'function') {
+      f = f();
+      v = f(0, 0, stack, ctx, tempExtra);
+    }
+    const array = ByteBeatProcessor.is2NumberArray(v);
+
+    if (test) {
+      for (let i = 0; i < 1000; i += 100) {
+        let s = f(i, i, stack, ctx, tempExtra);
+        //if (i === 0) {
+        //  console.log('stack: ' + stack.sp());
+        //}
+        //log("" + i + ": " + s);
+        if (typeof s === 'function') {
+          f = f();
+          s = 0;
+        }
+        if (ByteBeatProcessor.is2NumberArray(s)) {
+          continue;
+        }
+        if (typeof s !== 'number') {
+          throw 'NaN';
+        }
+      }
+    }
+
+    return {f, array};
+  }
+
+  static interpolate(buf, ndx) {
+    const n = ndx | 0;
+    const f = ndx % 1;
+    const v0 = buf[n];
+    const v1 = buf[n + 1];
+    return v0 + (v1 - v0) * f;
+  }
+
+  static trunc(buf, ndx) {
+    return buf[ndx | 0];
+  }
+
+
+
+  constructor(actualSampleRate) {
+    this.actualSampleRate = actualSampleRate;
+    this.buffer0 = new Float32Array(4096);
+    this.buffer1 = new Float32Array(4096);
+    this.desiredSampleRate = 8000;
+    this.time = 0;
+    this.expandMode = 1;
+    this.type = 0;
+    this.expressionType = 0;
+    this.functions = [
+      {
+        f: function(t) {
+          return Math.sin(t) * 0.1;
+        },
+        array: false,
+      },
+    ];
+    this.contexts = [ByteBeatProcessor.makeContext(), ByteBeatProcessor.makeContext()];
+    this.expressions = ['Math.sin(t) * 0.1'];
+    this.extra = {
+      mouseX: 0,
+      mouseY: 0,
+      width: 1,
+      height: 1,
+      tiltX: 0,
+      tiltY: 0,
+      compass: 0,
+      sampleRate: 0,
+    };
+    this.stacks = [new WrappingStack(), new WrappingStack()];
+  }
+
+  reset() {
+    this.time = 0;
+  }
+
+  setProperties(props) {
+    Object.assign(this, props);
+  }
+
+  setExtra(props) {
+    Object.assign(this.extra, props);
+  }
+
+  getTime() {
+    return this.convertToDesiredSampleRate(this.time);
+  }
+
+  recompile() {
+    this.setExpressions(this.getExpressions());
+  }
+
+  convertToDesiredSampleRate(rate) {
+    return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+  }
+
+  setDesiredSampleRate(rate) {
+    this.desiredSampleRate = rate;
+    this.extra.sampleRate = rate;
+  }
+
+  getDesiredSampleRate() {
+    return this.desiredSampleRate;
+  }
+
+  setExpressionType(type) {
+    this.expressionType = type;
+  }
+
+  setExpressions(expressions) {
+    this.functions = expressions.map(expression => {
+      return ByteBeatProcessor.expressionStringToFn(expression, {}, false);
+    });
+  }
+
+  getExpressionType() {
+    return this.expressionType;
+  }
+
+  setType(type) {
+    this.type = type;
+  }
+
+  getType() {
+    return this.type;
+  }
+
+  getNumChannels() {
+    const fn1 = (this.functions[1] || {}).f;
+    return (this.functions[0].array || fn1) ? 2 : 1;
+  }
+
+  process(dataLength, leftData, rightData) {
+    const time = this.convertToDesiredSampleRate(this.time);
+    const lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
+    if (this.buffer0.length < lastSample) {
+      this.buffer0 = new Float32Array(lastSample);
+      this.buffer1 = new Float32Array(lastSample);
+    }
+    //
+    const fn0 = this.functions[0].f;
+    const fn0Array = this.functions[0].array;
+    const fn1 = (this.functions[1] || {}).f;
+    const stack0 = this.stacks[0];
+    const stack1 = this.stacks[1];
+    const ctx0 = this.contexts[0];
+    const ctx1 = this.contexts[1];
+    const buffer0 = this.buffer0;
+    const buffer1 = (fn0Array || fn1) ? this.buffer1 : buffer0;
+    const extra = this.extra;
+    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+
+    const samplerGroup = fn0Array
+        ? ByteBeatProcessor.s_samplers.array
+        : fn1
+            ? ByteBeatProcessor.s_samplers.twoChannels
+            : ByteBeatProcessor.s_samplers.oneChannel;
+    const sampler = samplerGroup[this.type];
+    sampler(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample);
+
+    if (dataLength) {
+      const step = this.convertToDesiredSampleRate(dataLength) / dataLength;
+
+      const expandFn = this.expandMode ? ByteBeatProcessor.interpolate : ByteBeatProcessor.trunc;
+      let ndx = 0;
+
+      if (rightData) {
+        for (let i = 0; i < dataLength; ++i) {
+          leftData[i] = expandFn(buffer0, ndx);
+          rightData[i] = expandFn(buffer1, ndx);
+          ndx += step;
+        }
+      } else {
+        for (let i = 0; i < dataLength; ++i) {
+          leftData[i * 2] = expandFn(buffer0, ndx);
+          leftData[i * 2 + 1] = expandFn(buffer1, ndx);
+          ndx += step;
+        }
+      }
+    }
+
+//    if (this.visualizer) {
+//      this.visualizer.update(buffer0, buffer1, lastSample - 1);
+//    }
+
+    this.time += dataLength;
+  }
+
+  getSampleForTime(time, context, stack, channel = 0) {
+    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    let s = 0;
+    if (this.functions[0].array) {
+      const ss = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
+      s = ss[channel];
+    } else {
+      if (!this.functions[1]) {
+        channel = 0;
+      }
+      s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
+    }
+    switch (this.type) {
+      case 0:
+        return (s & 255) / 127 - 1;
+      case 1:
+        return s;
+      case 2:
+        int8[0] = s;
+        return int8[0] / 128;
+      default:
+        return 0;
+    }
+  }
+}
+
+//const s_samplers = {
+//${[...Object.entries(s_samplers)].map(([key, value]) => {
+//  return `${key}: [${value.map(fn => `${fn.toString()}`).join(',\n')}\n]`;
+//}).join(',\n')}
+//};
+
+const beatProcessorJS = `
+const int8 = new Int8Array(1);
+
+${WrappingStack.toString()}
+
+${ByteBeatProcessor.toString()}
+
+class BeatWorkletProcessor extends AudioWorkletProcessor {
+
+  static get parameterDescriptors() {
+    return [
+      { name: 'sampleRate', defaultValue: 8000 },
+    ];
+  }
+
+  constructor() {
+    super();
+    this.byteBeat = new ByteBeatProcessor();
+    this.port.onmessage = (event) => {
+      const {cmd, data} = event.data;
+      const fn = this[cmd];//  || this.prototype[cmd];
+      if (fn) {
+        fn.call(this, data);
+      } else {
+        throw new Error(\`BeatProcessor unknown command: '\${cmd}'\`);
+      }
+    };
+  }
+
+  setProperties(data) {
+    this.byteBeat.setProperties(data);
+  }
+
+  setExtra(data) {
+    this.byteBeat.setExtra(data);
+  }
+
+  setExpressions(data) {
+    this.byteBeat.setExpressions(data);
+  }
+
+  process(inputs, outputs, parameters) {
+    this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
+    return true;
+  }
+}
+
+registerProcessor('beat-processor', BeatWorkletProcessor);
+`;
+const workerURL = URL.createObjectURL(new Blob([beatProcessorJS], {type: 'application/javascript'}));
+
+
+export default class ByteBeat {
+  constructor() {
+    this.postfixTemplate = `
+      return function(t, i, stack, window, extra) {
+        $(exp)
+      };
+    `;
+
+    window.addEventListener('mousemove', (event) => {
+      this._sendExtra({
+        mouseX: event.clientX,
+        mouseY: event.clientY,
+      });
+    }, true);
+
+    if (window.DeviceOrientationEvent) {
+      // Listen for the deviceorientation event and handle the raw data
+      window.addEventListener('deviceorientation', (eventData) => {
+        this._sendExtra({
+          // gamma is the left-to-right tilt in degrees, where right is positive
+          tiltX: eventData.gamma,
+
+          // beta is the front-to-back tilt in degrees, where front is positive
+          tiltY: eventData.beta,
+
+          // alpha is the compass direction the device is facing in degrees
+          compass: eventData.alpha,
+        });
+      }, false);
+    }
+
+    // save up the messages until the AudioWorkletNode is ready
+    const msgs = [];
+    this.node = {
+      port: {
+        postMessage(data) {
+          msgs.push(data);
+        },
+      },
+    };
+
+    // TODO: rename - this is the previous expressions so we don't
+    // double compile
+    this.expressions = [];
+
+    // TODO: add 'makeExtra'. This is needed at compile time
+    this.extra = {};
+
+    const context = new AudioContext();
+    this.context = context;
+    this.byteBeat = new ByteBeatProcessor(context.sampleRate);
+    this._sendProperties({actualSampleRate: context.sampleRate});
+    context.audioWorklet.addModule(workerURL)
+      .then(() => {
+        this.node = new AudioWorkletNode(context, 'beat-processor', { outputChannelCount: [2] });
+        for (const msg of msgs) {
+          this.node.port.postMessage(msg);
+        }
+      });
+
+    const analyser = context.createAnalyser();
+    this.analyser = analyser;
+
+    // Make a buffer to receive the audio data
+    const numPoints = analyser.frequencyBinCount;
+    this.audioUint8DataArray = new Uint8Array(numPoints);
+    this.audioFloat32DataArray = new Float32Array(numPoints);
+
+    this.good = true;
+  }
+
+  static makeContext() {
+    return ByteBeatProcessor.makeContext();
+  }
+
+  _sendExtra(data) {
+    this.node.port.postMessage({
+      cmd: 'setExtra',
+      data,
+    });
+  }
+
+  _sendProperties(data) {
+    this.node.port.postMessage({
+      cmd: 'setProperties',
+      data,
+    });
+  }
+
   resize(width, height) {
-    this.extra.width = width;
-    this.extra.height = height;
+    this._sendExtra({width, height});
   }
 
   setVisualizer(visualizer) {
@@ -343,7 +586,7 @@ export default class ByteBeat {
   }
 
   reset() {
-    this.time = 0;
+    this._sendProperties({time: 0});
   }
 
   resume(callback) {
@@ -377,7 +620,9 @@ export default class ByteBeat {
 
     this.fnHeader = this.fnHeader || (function() {
       const keys = {};
-      Object.getOwnPropertyNames(globalThis).forEach((key) => {
+      //const filter = _ => true;
+      const filter = n => n === 'scroll' || n === 'sin';
+      Object.getOwnPropertyNames(globalThis).filter(filter).forEach((key) => {
         keys[key] = true;
       });
       delete keys['Math'];
@@ -393,57 +638,6 @@ export default class ByteBeat {
       `;
     }());
     const fnHeader = this.fnHeader;
-
-    function is2NumberArray(v) {
-      return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
-    }
-
-    function expressionStringToFn(x, extra) {
-      x = removeCommentsAndLineBreaks(x);
-      // Translate a few things.
-      function replacer(str, obj, p1, name) {
-        return Object.prototype.hasOwnProperty.call(obj, p1) ? (name + p1) : str;
-      }
-      x = x.replace(/\bint\b/g, 'floor');
-      x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
-        return replacer(substr, extra, p1, 'extra.');
-      });
-
-      evalExp = `${fnHeader}${x}`;
-      // eslint-disable-next-line no-new-func
-      const fp = new Function('stack', 'window', 'extra', evalExp);
-      let f = fp(undefined, undefined, undefined);
-      const ctx = ByteBeat.makeContext();
-
-      const stack = new WrappingStack();
-      const tempExtra = Object.assign({}, extra);
-      // check function
-      let v = f(0, 0, stack, ctx, tempExtra);
-      if (typeof v === 'function') {
-        f = f();
-        v = f(0, 0, stack, ctx, tempExtra);
-      }
-      const array = is2NumberArray(v);
-      for (let i = 0; i < 1000; i += 100) {
-        let s = f(i, i, stack, ctx, tempExtra);
-        if (i === 0) {
-          console.log('stack: ' + stack.sp());
-        }
-        //log("" + i + ": " + s);
-        if (typeof s === 'function') {
-          f = f();
-          s = 0;
-        }
-        if (is2NumberArray(s)) {
-          continue;
-        }
-        if (typeof s !== 'number') {
-          throw 'NaN';
-        }
-      }
-
-      return {f, array};
-    }
 
     function postfixToInfix(x) {
       x = removeCommentsAndLineBreaks(x);
@@ -568,8 +762,24 @@ export default class ByteBeat {
               }`;
         }
       }
-      const result = expressionStringToFn(x, extra, expressionType);
-      return result;
+
+      x = removeCommentsAndLineBreaks(x);
+      // Translate a few things.
+      function replacer(str, obj, p1, name) {
+        return Object.prototype.hasOwnProperty.call(obj, p1) ? (name + p1) : str;
+      }
+      x = x.replace(/\bint\b/g, 'floor');
+      x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
+        return replacer(substr, extra, p1, 'extra.');
+      });
+
+      evalExp = `${fnHeader}${x}`;
+
+      const result = ByteBeatProcessor.expressionStringToFn(evalExp, extra, true);
+      return {
+        ...result,
+        expression: evalExp,
+      };
     }
 
     const funcs = [];
@@ -604,6 +814,12 @@ export default class ByteBeat {
     // copy the expressions
     this.expressions = expressions.slice(0);
     this.functions = funcs;
+    const exp = funcs.map(({expression}) => expression);
+    this.node.port.postMessage({
+      cmd: 'setExpressions',
+      data: exp,
+    });
+    this.byteBeat.setExpressions(exp);
     if (this.onCompileCallback) {
       this.onCompileCallback(null);
     }
@@ -614,126 +830,60 @@ export default class ByteBeat {
   }
 
   setDesiredSampleRate(rate) {
-    this.desiredSampleRate = rate;
-    this.extra.sampleRate = rate;
+    this._sendProperties({desiredSampleRate: rate});
+    this._sendExtra({sampleRate: rate});
+    this.byteBeat.setDesiredSampleRate(rate);
   }
 
   getDesiredSampleRate() {
-    return this.desiredSampleRate;
+    return this.byteBeat.getDesiredSampleRate();
   }
 
   setExpressionType(type) {
     this.expressionType = type;
+    this.byteBeat.setExpressionType(type);
+    this._sendProperties({expressionType: type});
   }
 
   getExpressions() {
-    return this.expressions.slice(0);
+    return this.expressions.slice();
   }
 
   getExpressionType() {
-    return this.expressionType;
+    return this.byteBeat.getExpressionType();
   }
 
   setType(type) {
-    this.type = type;
+    this.byteBeat.setType(type);
+    this._sendProperties({type});
   }
 
   getType() {
-    return this.type;
+    return this.byteBeat.getType();
   }
 
   getNumChannels() {
-    const fn1 = (this.functions[1] || {}).f;
-    return (this.functions[0].array || fn1) ? 2 : 1;
+    return this.byteBeat.getNumChannels();
   }
 
   process(dataLength, leftData, rightData) {
-    const time = this.convertToDesiredSampleRate(this.time);
-    const lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
-    if (this.buffer0.length < lastSample) {
-      this.buffer0 = new Float32Array(lastSample);
-      this.buffer1 = new Float32Array(lastSample);
-    }
-    //
-    const fn0 = this.functions[0].f;
-    const fn0Array = this.functions[0].array;
-    const fn1 = (this.functions[1] || {}).f;
-    const stack0 = this.stacks[0];
-    const stack1 = this.stacks[1];
-    const ctx0 = this.contexts[0];
-    const ctx1 = this.contexts[1];
-    const buffer0 = this.buffer0;
-    const buffer1 = (fn0Array || fn1) ? this.buffer1 : buffer0;
-    const extra = this.extra;
-    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
-
-    const samplerGroup = fn0Array ? s_samplers.array : fn1 ? s_samplers.twoChannels : s_samplers.oneChannel;
-    const sampler = samplerGroup[this.type];
-    sampler(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample);
-
-    if (dataLength) {
-      const step = this.convertToDesiredSampleRate(dataLength) / dataLength;
-      let ndx = 0;
-
-      function interpolate(buf) {
-        const n = ndx | 0;
-        const f = ndx % 1;
-        const v0 = buf[n];
-        const v1 = buf[n + 1];
-        return v0 + (v1 - v0) * f;
-      }
-
-      function trunc(buf) {
-        return buf[ndx | 0];
-      }
-
-      const expandFn = this.expandMode ? interpolate : trunc;
-
-      if (rightData) {
-        for (let i = 0; i < dataLength; ++i) {
-          leftData[i] = expandFn(buffer0);
-          rightData[i] = expandFn(buffer1);
-          ndx += step;
-        }
-      } else {
-        for (let i = 0; i < dataLength; ++i) {
-          leftData[i * 2] = expandFn(buffer0);
-          leftData[i * 2 + 1] = expandFn(buffer1);
-          ndx += step;
-        }
-      }
-    }
-
-    if (this.visualizer) {
-      this.visualizer.update(buffer0, buffer1, lastSample - 1);
-    }
-
-    this.time += dataLength;
+    this.byteBeat.process(dataLength, leftData, rightData);
   }
 
-  getSampleForTime(time, context, stack, channel = 0) {
-    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
-    let s = 0;
-    if (this.functions[0].array) {
-      const ss = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
-      s = ss[channel];
-    } else {
-      if (!this.functions[1]) {
-        channel = 0;
-      }
-      s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
-    }
-    switch (this.type) {
-      case 0:
-        return (s & 255) / 127 - 1;
-      case 1:
-        return s;
-      case 2:
-        int8[0] = s;
-        return int8[0] / 128;
-      default:
-        return 0;
-    }
+  getSampleForTime(time, context, stack, channel) {
+    return this.byteBeat.getSampleForTime(time, context, stack, channel);
+  }
+
+  getByteAudioData(destArray) {
+    destArray = destArray || this.audioUint8DataArray;
+    this.analyser.getByteFrequencyData(destArray);
+    return destArray;
+  }
+
+  getFloatAudioData(destArray) {
+    destArray = destArray || this.audioFloat32DataArray;
+    this.analyser.getFloatFrequencyData(destArray);
+    return destArray;
   }
 
   startOnUserGesture() {
@@ -758,7 +908,8 @@ export default class ByteBeat {
   play() {
     if (this.node) {
       this.startOnUserGesture();
-      this.node.connect(this.context.destination);
+      this.node.connect(this.analyser);
+      this.analyser.connect(this.context.destination);
     }
   }
 

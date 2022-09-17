@@ -238,7 +238,6 @@ function main() {
   {
     const setVisualizer = ndx => {
       g_visualizer = g_visualizers[ndx].visualizer;
-      g_byteBeat.setVisualizer(g_visualizer);
     };
     const names = g_visualizers.map(({name}) => name);
     const ndx = Math.min(names.length - 1, 1);
