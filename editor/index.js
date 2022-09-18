@@ -333,8 +333,11 @@ function main() {
 
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
+
   {
+    $('loadingContainer').style.display = 'none';
     const s = $('startContainer');
+    s.style.display = '';
     s.addEventListener('click', function() {
       s.style.display = 'none';
       g_byteBeat.resume(playPause);
@@ -342,11 +345,14 @@ function main() {
   }
 
   function render() {
+    // request the next one because we want to try again
+    // even if one of the functions below fails (given we're
+    // running user code)
+    requestAnimationFrame(render, canvas);
     if (playing) {
       updateTimeDisplay();
       g_visualizer.render(g_byteBeat);
     }
-    requestAnimationFrame(render, canvas);
   }
   render();
 
@@ -552,11 +558,12 @@ function compile(text, resetToZero) {
     if (sections.channel2) {
       expressions.push(sections.channel2);
     }
+    if (resetToZero) {
+      g_visualizer.reset();
+    }
     g_byteBeat.setExpressions(expressions, resetToZero);
   }
   g_byteBeat.setOptions(sections);
-  // comment in to allow live GLSL editing
-  //g_visualizer.setEffects(sections);
 }
 
 function handleCompileError(error) {

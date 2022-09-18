@@ -42,6 +42,7 @@ export default class WaveEffect {
     twgl.setAttribInfoBufferFromArray(gl, this.bufferInfoL.attribs.height, this.lineHeightL);
     twgl.setAttribInfoBufferFromArray(gl, this.bufferInfoR.attribs.height, this.lineHeightR);
     this.then = performance.now();
+    this.position = 0;
   }
   resize(gl) {
     this.beatContext = ByteBeat.makeContext();
@@ -84,11 +85,10 @@ export default class WaveEffect {
     const {uniforms, programInfo, bufferInfoL, bufferInfoR, beatContext: context, beatStack: stack} = this;
     const numChannels = byteBeat.getNumChannels();
 
-    this.frameCount++;
-    const frameSkip = 8;
-    if (byteBeat.isRunning() && this.frameCount % frameSkip === 0) {
-      const now = performance.now();
-      const elapsedTimeMS = now - this.then;
+    const targetTimeMS = 1000 / (48000 / 4096);
+    const now = performance.now();
+    const elapsedTimeMS = now - this.then;
+    if (byteBeat.isRunning() && elapsedTimeMS >= targetTimeMS) {
       this.then = now;
 
       const startTime = this.position;

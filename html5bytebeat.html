@@ -213,6 +213,7 @@ input {
    color: white;
    border: none;
 }
+#loadingContainer,
 #startContainer {
   display: flex;
   justify-content: center;
@@ -225,12 +226,17 @@ input {
   top: 0px;
   background-color: rgba(0, 0, 0, 0.7);
 }
+#loadingContainer>*,
 #startButton {
   color: white;
   font-size: 112pt;
   background-color: blue;
-  border: 0.2em solid blue;
+  padding: 0.2em;
   border-radius: 0.2em;
+}
+#loadingContainer>* {
+  background-color: slateblue;
+  font-size: 32pt;
 }
 #debug {
   position: absolute;
@@ -280,8 +286,11 @@ input {
     </div>
   </div>
 </div>
-<div id="startContainer">
+<div id="startContainer" style="display: none;">
    <div id="startButton">play ▶</div>
+</div>
+<div id="loadingContainer">
+   <div>loading...</div>
 </div>
 <script>
 // eslint-disable-next-line no-unused-vars

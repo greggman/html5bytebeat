@@ -101,39 +101,11 @@ export default class WaveVisualizer extends Visualizer {
     this.resolution[0] = gl.drawingBufferWidth;
     this.resolution[1] = gl.drawingBufferHeight;
     const now = performance.now();
-    this.commonUniforms.time = now - this.then;
+    this.commonUniforms.time = (now - this.then) * 0.001;
 
     for (const effect of this.effects) {
       effect.render(gl, this.commonUniforms, byteBeat);
     }
-
-/*
-    const canvas = this.canvas;
-
-    {
-      //const data = byteBeat.getFloatAudioData();
-      const data = byteBeat.getByteAudioData();
-      const dst = this.lineHeightL;
-      const v = this.oneVerticalPixel;
-      const v2 = v * 2;
-      let h1 = data[0] / 128 - 1;
-      for (let i = 0; i < dst.length; i += 2) {
-        const ndx = i * data.length / dst.length | 0;
-        const h2 = data[ndx] / 128 - 1;
-        const dy = h1 - h2;
-        dst[i] = h1;
-        dst[i + 1] = (Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2)));
-        h1 = h2;
-      }
-      const bufferInfo = this.effects.wave.bufferInfoL;
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.lineHeightL);
-    }
-
-    const now = (new Date()).getTime() * 0.001;
-
-
-*/
 
     this.handleCapture();
   }
