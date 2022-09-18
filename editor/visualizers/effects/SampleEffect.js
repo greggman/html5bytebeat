@@ -1,5 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
-import ByteBeat from '../../../src/bytebeat.js';
+import ByteBeat from '../../../src/ByteBeat.js';
 import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
