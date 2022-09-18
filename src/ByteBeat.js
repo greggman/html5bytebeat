@@ -5,27 +5,6 @@ function strip(s) {
   return s.replace(/^\s+/, '').replace(/\s+$/, '');
 }
 
-const replaceRE = /\$\((\w+)\)/g;
-
-/**
- * Replaces strings with property values.
- * Given a string like "hello $(first) $(last)" and an object
- * like {first:"John", last:"Smith"} will return
- * "hello John Smith".
- * @param {string} str String to do replacements in
- * @param {...} 1 or more objects containing properties.
- */
-const replaceParams = function(str, ...args) {
-  return str.replace(replaceRE, function(str, p1/*, offset, s*/) {
-    for (let ii = 0; ii < args.length; ++ii) {
-      if (args[ii][p1] !== undefined) {
-        return args[ii][p1];
-      }
-    }
-    throw new Error(`unknown string param '${p1}'`);
-  });
-};
-
 function removeCommentsAndLineBreaks(x) {
   // remove comments (hacky)
   x = x.replace(/\/\/.*/g, ' ');
@@ -199,6 +178,19 @@ class ByteBeatProcessor {
     };
   }
 
+  static makeExtra() {
+    return {
+      mouseX: 0,
+      mouseY: 0,
+      width: 1,
+      height: 1,
+      tiltX: 0,
+      tiltY: 0,
+      compass: 0,
+      sampleRate: 0,
+    };
+  }
+
   static is2NumberArray(v) {
     return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
   }
@@ -262,7 +254,7 @@ class ByteBeatProcessor {
     this.buffer1 = new Float32Array(4096);
     this.desiredSampleRate = 8000;
     this.time = 0;
-    this.expandMode = 1;
+    this.expandMode = 0;
     this.type = 0;
     this.expressionType = 0;
     this.functions = [
@@ -275,16 +267,7 @@ class ByteBeatProcessor {
     ];
     this.contexts = [ByteBeatProcessor.makeContext(), ByteBeatProcessor.makeContext()];
     this.expressions = ['Math.sin(t) * 0.1'];
-    this.extra = {
-      mouseX: 0,
-      mouseY: 0,
-      width: 1,
-      height: 1,
-      tiltX: 0,
-      tiltY: 0,
-      compass: 0,
-      sampleRate: 0,
-    };
+    this.extra = ByteBeatProcessor.makeExtra();
     this.stacks = [new WrappingStack(), new WrappingStack()];
   }
 
@@ -378,17 +361,17 @@ class ByteBeatProcessor {
 
     if (dataLength) {
       const step = this.convertToDesiredSampleRate(dataLength) / dataLength;
-
       const expandFn = this.expandMode ? ByteBeatProcessor.interpolate : ByteBeatProcessor.trunc;
-      let ndx = 0;
 
       if (rightData) {
+        let ndx = 0;
         for (let i = 0; i < dataLength; ++i) {
           leftData[i] = expandFn(buffer0, ndx);
           rightData[i] = expandFn(buffer1, ndx);
           ndx += step;
         }
       } else {
+        let ndx = 0;
         for (let i = 0; i < dataLength; ++i) {
           leftData[i * 2] = expandFn(buffer0, ndx);
           leftData[i * 2 + 1] = expandFn(buffer1, ndx);
@@ -397,11 +380,30 @@ class ByteBeatProcessor {
       }
     }
 
-//    if (this.visualizer) {
-//      this.visualizer.update(buffer0, buffer1, lastSample - 1);
-//    }
+    /*
+    if (globalThis.ndx === undefined) {
+      globalThis.ndx = 0;
+      globalThis.ticks = 0;
+      globalThis.cap = new Float32Array(4096);
+    }
+    if (globalThis.ticks++ < 10) {
+      console.log('dl:', dataLength, 'ls:', lastSample, 'dsr:', this.desiredSampleRate, 'asr:', this.actualSampleRate);
+    }
+    if (globalThis.ndx < 4096) {
+      for (let i = 0; i < leftData.length; ++i) {
+        globalThis.cap[globalThis.ndx++] = leftData[i];
+      //for (let i = 0; i < lastSample - 2; ++i) {
+      //  globalThis.cap[globalThis.ndx++] = buffer0[i];
+      }
+      if (globalThis.ndx >= 4096) {
+        console.log(JSON.stringify(Array.from(globalThis.cap), null, 2));
+      }
+    }
+    */
 
-    this.time += dataLength;
+    // I don't know why this -2 is needed!
+    // If I don't add it I get a glitch
+    this.time += dataLength - 2;
   }
 
   getSampleForTime(time, context, stack, channel = 0) {
@@ -479,6 +481,11 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     this.byteBeat.setExpressions(data);
   }
 
+  setExpressionsAndResetToZero(data) {
+    this.byteBeat.setExpressions(data);
+    this.byteBeat.reset();
+  }
+
   process(inputs, outputs, parameters) {
     this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
     return true;
@@ -507,24 +514,28 @@ const workerURL = URL.createObjectURL(new Blob([beatProcessorJS], {type: 'applic
 //     make it easier to plug into someone else's code without
 //     needed tons of options
 export default class ByteBeat {
-  constructor() {
-    this.postfixTemplate = `
+
+  static applyPostfixTemplate = params => `
       return function(t, i, stack, window, extra) {
-        $(exp)
+        ${params.exp}
       };
     `;
 
+  constructor() {
+
     window.addEventListener('mousemove', (event) => {
-      this._sendExtra({
+      const data = {
         mouseX: event.clientX,
         mouseY: event.clientY,
-      });
+      };
+      this.byteBeat.setExtra(data);
+      this._sendExtra(data);
     }, true);
 
     if (window.DeviceOrientationEvent) {
       // Listen for the deviceorientation event and handle the raw data
       window.addEventListener('deviceorientation', (eventData) => {
-        this._sendExtra({
+        const data = {
           // gamma is the left-to-right tilt in degrees, where right is positive
           tiltX: eventData.gamma,
 
@@ -533,7 +544,9 @@ export default class ByteBeat {
 
           // alpha is the compass direction the device is facing in degrees
           compass: eventData.alpha,
-        });
+        };
+        this.byteBeat.setExtra(data);
+        this._sendExtra(data);
       }, false);
     }
 
@@ -550,8 +563,7 @@ export default class ByteBeat {
     // This is the previous expressions so we don't double compile
     this.expressions = [];
 
-    // TODO: add 'makeExtra'. This is needed at compile time
-    this.extra = {};
+    this.extra = ByteBeatProcessor.makeExtra();
     this.time = 0;
     this.startTime = performance.now();   // time since the song started playing
     this.pauseTime = this.startTime;      // time since the song was paused
@@ -600,7 +612,9 @@ export default class ByteBeat {
   }
 
   resize(width, height) {
-    this._sendExtra({width, height});
+    const data = {width, height};
+    this.byteBeat.setExtra(data);
+    this._sendExtra(data);
   }
 
   reset() {
@@ -613,11 +627,14 @@ export default class ByteBeat {
 
   resume(callback) {
     if (this.context.resume) {
-      console.log('called resume');
       this.context.resume().then(callback);
     } else {
       callback();
     }
+  }
+
+  isRunning() {
+    return this.connected;
   }
 
   getTime() {
@@ -637,14 +654,13 @@ export default class ByteBeat {
     this.expandMode = (sections['linear'] !== undefined);
   }
 
-  setExpressions(expressions/*, extra */) {
-    const postfixTemplate = this.postfixTemplate;
+  setExpressions(expressions, resetToZero) {
     let evalExp;
 
     this.fnHeader = this.fnHeader || (function() {
       const keys = {};
-      //const filter = _ => true;
-      const filter = n => n === 'scroll' || n === 'sin';
+      const filter = () => true;
+      //const filter = n => n === 'scroll' || n === 'sin';
       Object.getOwnPropertyNames(globalThis).filter(filter).forEach((key) => {
         keys[key] = true;
       });
@@ -759,7 +775,7 @@ export default class ByteBeat {
 
       steps.push('return stack.pop();');
 
-      const exp = replaceParams(postfixTemplate, {
+      const exp = ByteBeat.applyPostfixTemplate({
         exp: steps.join('\n'),
       });
       return exp;
@@ -838,11 +854,23 @@ export default class ByteBeat {
     this.expressions = expressions.slice(0);
     this.functions = funcs;
     const exp = funcs.map(({expression}) => expression);
+    // I feel like a Windows programmer. The reset to zero
+    // is needed because some expressions do stuff like
+    //
+    //     window.channels = t > 0 ? window.channels : data
+    //
+    // but because we are now async if I send 2 messages
+    // there's no guarantee the time will be zero between
+    // the message that sets the expression and the message
+    // that sets the time so it's possible t will never be zero
     this.node.port.postMessage({
-      cmd: 'setExpressions',
+      cmd: resetToZero ? 'setExpressionsAndResetToZero' : 'setExpressions',
       data: exp,
     });
     this.byteBeat.setExpressions(exp);
+    if (resetToZero) {
+      this.byteBeat.reset();
+    }
     if (this.onCompileCallback) {
       this.onCompileCallback(null);
     }

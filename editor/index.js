@@ -386,8 +386,7 @@ function main() {
     compressor.decompress(bytes, function(text) {
         doNotSetURL = true;
         codeElem.value = text;
-        compile(text);
-        resetToZero();
+        compile(text, true);
       },
       dummyFunction);
     if (data.debug) {
@@ -546,14 +545,14 @@ function splitBySections(str) {
   }
   return sections;
 }
-function compile(text) {
+function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
     const expressions = [sections.default || sections.channel1];
     if (sections.channel2) {
       expressions.push(sections.channel2);
     }
-    g_byteBeat.setExpressions(expressions);
+    g_byteBeat.setExpressions(expressions, resetToZero);
   }
   g_byteBeat.setOptions(sections);
   // comment in to allow live GLSL editing
