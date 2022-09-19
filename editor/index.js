@@ -1,6 +1,6 @@
 /* global LZMA */
 /* global WavMaker */
-import ByteBeat from '../src/ByteBeat.js';
+import ByteBeatNode from '../src/ByteBeatNode.js';
 import WrappingStack from '../src/WrappingStack.js';
 import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
@@ -15,7 +15,9 @@ function strip(s) {
   return s.replace(/^\s+/, '').replace(/\s+$/, '');
 }
 
+let g_context;
 let g_byteBeat;
+let g_analyser;
 let g_visualizers;
 let g_visualizer;
 let g_screenshot;
@@ -128,18 +130,35 @@ function score({user, reactions, groupSize}) {
        reactions['-1']) / groupSize;
 }
 
-function main() {
+function play() {
+  if (!playing) {
+    playing = true;
+    //const elapsedPauseTime = performance.now() - this.pauseTime;
+    //this.startTime += elapsedPauseTime;
+    g_byteBeat.connect(g_analyser);
+    g_analyser.connect(g_context.destination);
+  }
+}
+
+function pause() {
+  if (playing) {
+    playing = false;
+    //this.pauseTime = performance.now();
+    g_byteBeat.disconnect();
+  }
+}
+
+async function main() {
   compressor = new LZMA( 'js/lzma_worker.js' );
   canvas = $('visualization');
   controls = $('controls');
 
-  loadSongs();
+  g_context = new AudioContext();
+  await ByteBeatNode.setup(g_context);
+  g_byteBeat = new ByteBeatNode(g_context);
 
-  g_byteBeat = new ByteBeat();
-  if (!g_byteBeat.good) {
-    // eslint-disable-next-line no-alert
-    alert('This page needs a browser the supports the Web Audio API or the Audio Data API: Chrome, Chromium, Firefox, or WebKit');
-  }
+  g_analyser = g_context.createAnalyser();
+  g_analyser.maxDecibels = -1;
 
   g_screenshotCanvas = document.createElement('canvas');
   g_screenshotCanvas.width = 400;
@@ -149,7 +168,7 @@ function main() {
   function resetToZero() {
     g_byteBeat.reset();
     g_visualizer.reset();
-    g_visualizer.render(g_byteBeat);
+    g_visualizer.render(g_byteBeat, g_analyser);
     updateTimeDisplay();
   }
 
@@ -164,13 +183,12 @@ function main() {
   timeElem.addEventListener('click', resetToZero);
 
   function playPause() {
-    playing = !playing;
-    if (playing) {
-      g_byteBeat.play();
+    if (!playing) {
       playElem.textContent = 'pause ■';
+      play();
     } else {
-      g_byteBeat.pause();
       playElem.textContent = ' play ▶';
+      pause();
       updateTimeDisplay();
     }
   }
@@ -332,16 +350,7 @@ function main() {
 
   onWindowResize();
   window.addEventListener('resize', onWindowResize, false);
-
-  {
-    $('loadingContainer').style.display = 'none';
-    const s = $('startContainer');
-    s.style.display = '';
-    s.addEventListener('click', function() {
-      s.style.display = 'none';
-      g_byteBeat.resume(playPause);
-    }, false);
-  }
+  playPause();
 
   function render() {
     // request the next one because we want to try again
@@ -350,7 +359,7 @@ function main() {
     requestAnimationFrame(render, canvas);
     if (playing) {
       updateTimeDisplay();
-      g_visualizer.render(g_byteBeat);
+      g_visualizer.render(g_byteBeat, g_analyser);
     }
   }
   render();
@@ -481,7 +490,7 @@ function showSaveDialog() {
         const numSamplesNeeded = sampleRate * numSeconds | 0;
         const numChannels = 2;
         const wavMaker = new WavMaker(sampleRate, numChannels);
-        const context = ByteBeat.makeContext();
+        const context = ByteBeatNode.makeContext();
         const stack = new WrappingStack();
         for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
           const start = i;
@@ -550,6 +559,7 @@ function splitBySections(str) {
   }
   return sections;
 }
+
 function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
@@ -616,4 +626,13 @@ function setURL() {
   dummyFunction);
 }
 
-main();
+{
+  loadSongs();
+  $('loadingContainer').style.display = 'none';
+  const s = $('startContainer');
+  s.style.display = '';
+  s.addEventListener('click', function() {
+    s.style.display = 'none';
+    main();
+  }, false);
+}

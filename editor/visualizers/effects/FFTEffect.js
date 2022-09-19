@@ -59,8 +59,10 @@ export default class FFTEffect {
       this.bufferInfo.numElements = width * 2;
     }
   }
-  render(gl, commonUniforms, byteBeat) {
-    const data = byteBeat.getByteAudioData();
+  render(gl, commonUniforms, byteBeat, analyser) {
+    this.data = this.data || new Uint8Array(analyser.frequencyBinCount);
+    const data = this.data;
+    analyser.getByteFrequencyData(data);
     const dst = this.lineHeight;
     const v = this.oneVerticalPixel;
     const v2 = v * 2;

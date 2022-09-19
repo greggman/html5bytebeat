@@ -57,43 +57,7 @@ export default class WaveVisualizer extends Visualizer {
     }
   }
 
-  updateBuffer(buffer, length, dest, position, bufferInfo) {
-    const gl = this.gl;
-    // Yes I know this is dumb. I should just do the last 2 at most.
-    let offset = 0;
-    const v = this.oneVerticalPixel;
-    const v2 = v * 2;
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
-    while (length) {
-      const max = Math.min(length, this.width - position);
-      let d = position * 2;
-      let h1 = buffer[offset];
-      for (let i = 0; i < max; ++i) {
-        const h2 = buffer[++offset];
-        const dy = h1 - h2;
-        dest[d++] = h1;
-        dest[d++] = Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2));
-        h1 = h2;
-      }
-      const view = new Float32Array(dest.buffer, position * 4 * 2, max * 2);
-      gl.bufferSubData(gl.ARRAY_BUFFER, position * 4 * 2, view);
-      position = (position + max) % this.width;
-      length -= max;
-    }
-    return position;
-  }
-
-  update(bufferL, bufferR, length) {
-    const position = this.position;
-    this.position = this.updateBuffer(bufferL, length, this.lineHeightL, position, this.effects.wave.bufferInfoL);
-    const is2Channels = bufferL !== bufferR;
-    // do we have 2 channels?
-    if (is2Channels) {
-      this.updateBuffer(bufferR, length, this.lineHeightR, position, this.effects.wave.bufferInfoR);
-    }
-  }
-
-  render(byteBeat) {
+  render(byteBeat, analyser) {
     const gl = this.gl;
     gl.clearColor(0, 0, 0.3, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -104,7 +68,7 @@ export default class WaveVisualizer extends Visualizer {
     this.commonUniforms.time = (now - this.then) * 0.001;
 
     for (const effect of this.effects) {
-      effect.render(gl, this.commonUniforms, byteBeat);
+      effect.render(gl, this.commonUniforms, byteBeat, analyser);
     }
 
     this.handleCapture();

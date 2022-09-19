@@ -287,7 +287,108 @@ Special thanks to:
 
 # Library
 
-TBD
+You can use this as a library. The library provides a `ByteBeatNode` which is a WebAudio [`AudioNode`](https://developer.mozilla.org/en-US/docs/Web/API/AudioNode).
+
+## Example usage:
+
+```js
+import ByteBeatNode from 'https://greggman.github.io/html5byteabeat/dist/1.x/ByteBeat.module.js';
+
+async function start() {
+  const context = new AudioContext();
+  await ByteBeatNode.setup(context);
+  byteBeatNode = new ByteBeatNode(context);
+  byteBeatNode.setType(ByteBeatNode.Type.byteBeat);
+  byteBeatNode.setExpressionType(ByteBeatNode.ExpressionType.infix);
+  byteBeatNode.setDesiredSampleRate(8000);
+  byteBeatNode.setExpressions(['((t >> 10) & 42) * t']);
+  byteBeatNode.connect(context.destination);
+}
+```
+
+## Live examples:
+
+* [Minimal ESM]()
+* [Minimal UMD]()
+* [Simple visualizer]()
+
+## API
+
+There's just one class `ByteBeatNode`. You must call the async function `ByteBeatNode.setup` before using the library.
+
+* `reset()`
+
+   re-starts the time to 0
+
+* `isRunning(): bool`
+
+   true or false if running
+
+* `setExpressions(expressions: string[], resetToZero: bool)`
+
+   Pass in array of 1 or 2 expressions.
+   If 2 expressions it is assumed each expression is for a different channel.
+   If a single expression returns an array of
+   2 values that is also also assumed to
+   be 2 channels.
+
+* `setDesiredSampleRate(rate: number)`
+
+   Sets the sample rate for the expression
+   (eg 8000, 11000, 22050, 44100, 48000)
+
+* `getDesiredSampleRate(): number`
+
+   Returns the previously set sample rate
+
+* `setExpressionType(expressionType: number)`
+
+    Sets the expression type. Valid expression types
+
+    ```
+    ByteBeatNode.ExpressionType.infix             // sin(t / 50)
+    ByteBeatNode.ExpressionType.postfix           // t 50 / sin
+    ByteBeatNode.ExpressionType.glitch            // see docs
+    ByteBeatNode.ExpressionType.function          // return sin(t / 50)
+    ```
+
+* `getExpressionType(): number`
+
+   Gets the expression type
+
+* `setType(type: number)`
+
+   Sets the output type.
+   
+   Valid types
+
+   ```
+   ByteBeatNode.Type.byteBeat          // 0 <-> 255
+   ByteBeatNode.Type.floatBeat         // -1.0 <-> +1.0
+   ByteBeatNode.Type.signedByteBeat    // -128 <-> 127
+   ```
+* `getType(): number`
+
+   Gets the type
+
+* `getNumChannels(): number`
+
+   Returns the number of channels output
+   by the current expression.
+
+* `getSampleForTime(time: number, context, stack, channel: number)`
+
+  Gets a -1 to +1 from the current expression for the given time (time is the `t` value in your expression)
+
+  This function is useful for visualizers.
+  To make a stack call `ByteBeatNode.createStack()`. To create a context call
+  `ByteBeatNode.createContext`.
+  A stack is used for postfix expressions.
+  [See docs on postfix](#postfix). The context
+  is used for keeping expressions state for
+  expressions that try hacks to keep state around like if they build a large note table and assign it to `window`. It won't
+  actually be assigned to `window`, it will
+  be assigned to the context (in theory)
 
 # License
 

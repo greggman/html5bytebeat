@@ -1,5 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
-import ByteBeat from '../../../src/ByteBeat.js';
+import ByteBeatNode from '../../../src/ByteBeatNode.js';
 import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
@@ -45,7 +45,7 @@ export default class WaveEffect {
     this.position = 0;
   }
   resize(gl) {
-    this.beatContext = ByteBeat.makeContext();
+    this.beatContext = ByteBeatNode.makeContext();
     this.beatStack = new WrappingStack();
 
     const width = gl.drawingBufferWidth;

@@ -1,5 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
-import ByteBeat from '../../../src/ByteBeat.js';
+import ByteBeatNode from '../../../src/ByteBeatNode.js';
 import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
@@ -68,7 +68,7 @@ export default class DataEffect {
     }
   }
   resize(gl) {
-    this.dataContext = ByteBeat.makeContext();
+    this.dataContext = ByteBeatNode.makeContext();
     this.dataStack = new WrappingStack();
 
     this.dataWidth = gl.drawingBufferWidth;

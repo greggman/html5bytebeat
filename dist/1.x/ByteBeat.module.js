@@ -1,5 +1,395 @@
-import WrappingStack from './WrappingStack.js';
-import ByteBeatCompiler from './ByteBeatCompiler.js';
+/* ByteBeat@1.0.2, license MIT */
+class WrappingStack {
+  constructor(stackSize = 256) {
+    let sp = 0;
+    const stack = [];
+    for (let ii = 0; ii < stackSize; ++ii) {
+      stack.push(0);
+    }
+
+    const push = function(v) {
+      stack[sp++] = v;
+      sp = sp % stackSize;
+    };
+
+    const pop = function() {
+      sp = (sp === 0) ? (stackSize - 1) : (sp - 1);
+      return stack[sp];
+    };
+
+    const pick = function(index) {
+      let i = sp - Math.floor(index) - 1;
+      while (i < 0) {
+        i += stackSize;
+      }
+      return stack[i % stackSize];
+    };
+
+    const put = function(index, value) {
+      let i = sp - Math.floor(index);
+      while (i < 0) {
+        i += stackSize;
+      }
+      stack[i % stackSize] = value;
+    };
+
+    const getSP = function() {
+      return sp;
+    };
+
+    return {
+      pop: pop,
+      push: push,
+      pick: pick,
+      put: put,
+      sp: getSP,
+    };
+  }
+}
+
+class ByteBeatCompiler {
+
+  static strip(s) {
+    return s.replace(/^\s+/, '').replace(/\s+$/, '');
+  }
+
+  static removeCommentsAndLineBreaks(x) {
+    // remove comments (hacky)
+    x = x.replace(/\/\/.*/g, ' ');
+    x = x.replace(/\n/g, ' ');
+    x = x.replace(/\/\*.*?\*\//g, ' ');
+    return x;
+  }
+
+  static is2NumberArray(v) {
+    return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
+  }
+
+  static applyPostfixTemplate(params) {
+    return `
+      return function(t, i, stack, window, extra) {
+        ${params.exp}
+      };
+    `;
+  }
+
+  static postfixToInfix(x) {
+    x = ByteBeatCompiler.removeCommentsAndLineBreaks(x);
+    // compress space
+    x = x.replace(/(\r\n|\r|\n|\t| )+/gm, ' ');
+    const tokens = ByteBeatCompiler.strip(x).split(' ');
+    const steps = [];
+    for (let i = 0; i < tokens.length; ++i) {
+      const token = tokens[i];
+      switch (token.toLowerCase()) {
+      case '>':
+        steps.push('var v1 = stack.pop();');
+        steps.push('var v2 = stack.pop();');
+        steps.push('stack.push((v1 < v2) ? 0xFFFFFFFF : 0);');
+        break;
+      case '<':
+        steps.push('var v1 = stack.pop();');
+        steps.push('var v2 = stack.pop();');
+        steps.push('stack.push((v1 > v2) ? 0xFFFFFFFF : 0);');
+        break;
+      case '=':
+        steps.push('var v1 = stack.pop();');
+        steps.push('var v2 = stack.pop();');
+        steps.push('stack.push((v2 == v1) ? 0xFFFFFFFF : 0);');
+        break;
+      case 'drop':
+        steps.push('stack.pop();');
+        break;
+      case 'dup':
+        steps.push('stack.push(stack.pick(0));');
+        break;
+      case 'swap':
+        steps.push('var a1 = stack.pop();');
+        steps.push('var a0 = stack.pop();');
+        steps.push('stack.push(a1);');
+        steps.push('stack.push(a0);');
+        break;
+      case 'pick':
+        steps.push('var a0 = stack.pop();');
+        steps.push('stack.push(stack.pick(a0));');
+        break;
+      case 'put':
+        steps.push('var a0 = stack.pop();');
+        steps.push('var a1 = stack.pick(0);');
+        steps.push('stack.put(a0, a1);');
+        break;
+      case 'abs':
+      case 'sqrt':
+      case 'round':
+      case 'tan':
+      case 'log':
+      case 'exp':
+      case 'sin':
+      case 'cos':
+      case 'floor':
+      case 'ceil':
+      case 'int':
+        steps.push('var a0 = stack.pop();');
+        steps.push('stack.push(' + token + '(a0));');
+        break;
+      case 'max':
+      case 'min':
+      case 'pow':
+        steps.push('var a0 = stack.pop();');
+        steps.push('var a1 = stack.pop();');
+        steps.push('stack.push(' + token + '(a1, a0));');
+        break;
+      case 'random':
+        steps.push('stack.push(' + token + '());');
+        break;
+      case '/':
+      case '+':
+      case '-':
+      case '*':
+      case '%':
+      case '>>':
+      case '<<':
+      case '|':
+      case '&':
+      case '^':
+      case '&&':
+      case '||':
+        steps.push('var a1 = stack.pop();');
+        steps.push('var a0 = stack.pop();');
+        steps.push('stack.push((a0 ' + token + ' a1) | 0);');
+        break;
+      case '~':
+        steps.push('var a0 = stack.pop();');
+        steps.push('stack.push(~a0);');
+        break;
+      default:
+        steps.push('stack.push(' + token + ');');
+        break;
+      }
+    }
+
+    steps.push('return stack.pop();');
+
+    const exp = ByteBeatCompiler.applyPostfixTemplate({
+      exp: steps.join('\n'),
+    });
+    return exp;
+  }
+
+  static glitchToPostfix = (function() {
+    const glitchToPostfixConversion = {
+        'a': 't',
+        'b': 'put',
+        'c': 'drop',
+
+        'd': '*',
+        'e': '/',
+        'f': '+',
+        'g': '-',
+        'h': '%',
+
+        'j': '<<',
+        'k': '>>',
+        'l': '&',
+        'm': '|',
+        'n': '^',
+        'o': '~',
+
+        'p': 'dup',
+        'q': 'pick',
+        'r': 'swap',
+
+        's': '<',
+        't': '>',
+        'u': '=',
+        '/': '//',
+
+        '!': '\n',
+        '.': ' ',
+    };
+
+    const isCapitalHex = function(c) {
+      return ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F'));
+    };
+
+    return function(x) {
+      // Convert to postfix
+      const postfix = [];
+
+      x = x.replace('glitch://', ''); // remove "glitch:"
+      x = ByteBeatCompiler.removeCommentsAndLineBreaks(x);
+      x = x.replace('glitch:', ''); // remove "glitch:"
+      x = x.replace(/^[^!]*!/, ''); // remove label
+
+      for (let i = 0; i < x.length; ++i) {
+        let done = false;
+        let imd = '';
+
+        // NOTE: works by magic when number is at end. While gathering
+        // imd if we're at the end of the string 'c' will be undefined
+        // which will fail isCapitalHex and so the last imd will be put in
+        // correctly.
+        let c;
+        while (!done) {
+          c = x[i];
+          if (isCapitalHex(c)) {
+            imd = imd + c;
+            ++i;
+          } else {
+            done = true;
+            if (imd.length) {
+              --i;
+              c = '0x' + imd;
+            }
+          }
+        }
+        postfix.push(glitchToPostfixConversion[c] || c);
+      }
+      return postfix.join(' ');
+    };
+
+  }());
+
+  static makeContext() {
+    return {
+      console: {
+        Math: {
+          // because`log` gets changed to Math.log
+          log: console.log.bind(console),
+        },
+      },
+    };
+  }
+
+  static makeExtra() {
+    return {
+      mouseX: 0,
+      mouseY: 0,
+      width: 1,
+      height: 1,
+      tiltX: 0,
+      tiltY: 0,
+      compass: 0,
+      sampleRate: 0,
+    };
+  }
+
+
+  static s_fnHeader = (function() {
+    const keys = {};
+    const filter = () => true;
+    //const filter = n => n === 'scroll' || n === 'sin';
+    Object.getOwnPropertyNames(globalThis).filter(filter).forEach((key) => {
+      keys[key] = true;
+    });
+    delete keys['Math'];
+    delete keys['window'];
+    return `
+        var ${Object.keys(keys).sort().join(',\n')};
+        var ${Object.getOwnPropertyNames(Math).map(key => {
+          const value = Math[key];
+          return (typeof value === 'function')
+              ? `${key} = Math.${key}.bind(Math)`
+              : `${key} = Math.${key}`;
+        }).join(',\n')};
+    `;
+  }());
+
+  static expressionStringToFn(evalExp, extra, test) {
+    // eslint-disable-next-line no-new-func
+    const fp = new Function('stack', 'window', 'extra', evalExp);
+    let f = fp(undefined, undefined, undefined);
+    const ctx = ByteBeatCompiler.makeContext();
+
+    const stack = new WrappingStack();
+    const tempExtra = Object.assign({}, extra);
+    // check function
+    let v = f(0, 0, stack, ctx, tempExtra);
+    if (typeof v === 'function') {
+      f = f();
+      v = f(0, 0, stack, ctx, tempExtra);
+    }
+    const array = ByteBeatCompiler.is2NumberArray(v);
+
+    if (test) {
+      for (let i = 0; i < 1000; i += 100) {
+        let s = f(i, i, stack, ctx, tempExtra);
+        //if (i === 0) {
+        //  console.log('stack: ' + stack.sp());
+        //}
+        //log("" + i + ": " + s);
+        if (typeof s === 'function') {
+          f = f();
+          s = 0;
+        }
+        if (ByteBeatCompiler.is2NumberArray(s)) {
+          continue;
+        }
+        if (typeof s !== 'number') {
+          throw 'NaN';
+        }
+      }
+    }
+
+    return {f, array};
+  }
+
+  static compileExpression(x, expressionType, extra) {
+    let evalExp;
+
+    try {
+      if (expressionType === 3) {  // function
+        x = `
+            return function(t, i, stack, window, extra) { 
+                ${ByteBeatCompiler.strip(x)};
+            }`;
+      } else {
+        if (expressionType === 2) {  // glitch
+          x = ByteBeatCompiler.glitchToPostfix(x);
+          expressionType = 1;
+        }
+        if (expressionType === 1) {  // postfix
+          x = ByteBeatCompiler.postfixToInfix(x);
+        } else {  // infix
+          x = `
+              return function(t, i, stack, window, extra) { 
+                  return ${ByteBeatCompiler.strip(x)};
+              }`;
+        }
+      }
+
+      x = ByteBeatCompiler.removeCommentsAndLineBreaks(x);
+      // Translate a few things.
+      function replacer(str, obj, p1, name) {
+        return Object.prototype.hasOwnProperty.call(obj, p1) ? (name + p1) : str;
+      }
+      x = x.replace(/\bint\b/g, 'floor');
+      x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
+        return replacer(substr, extra, p1, 'extra.');
+      });
+
+      evalExp = `${ByteBeatCompiler.s_fnHeader}${x}`;
+
+      const result = ByteBeatCompiler.expressionStringToFn(evalExp, extra, true);
+      return {
+        ...result,
+        expression: evalExp,
+      };
+    } catch (e) {
+      if (e.stack) {
+        const m = /<anonymous>:1:(\d+)/.exec(e.stack);
+        if (m) {
+          const charNdx = parseInt(m[1]);
+          console.error(e.stack);
+          console.error(evalExp.substring(0, charNdx), '-----VVVVV-----\n', evalExp.substring(charNdx));
+        }
+      } else {
+        console.error(e, e.stack);
+      }
+      throw e;
+    }
+  }
+}
 
 const int8 = new Int8Array(1);
 
@@ -341,7 +731,7 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor('beat-processor', BeatWorkletProcessor);
+registerProcessor('bytebeat-processor', BeatWorkletProcessor);
 `;
 const workerURL = URL.createObjectURL(new Blob([beatProcessorJS], {type: 'application/javascript'}));
 
@@ -354,17 +744,23 @@ const workerURL = URL.createObjectURL(new Blob([beatProcessorJS], {type: 'applic
 // date with the latest settings. It also compiles the
 // user's expressions. Only if it succeeds does it pass those
 // expressions on to the two ByteBeat instances.
-//
-// TODO:
-//   * I should split this into multiple classes. One to compile
-//     expressions and another to manage the audio
-//   * It would arguably be better if all this did is manage
-//     the AudioWorkletNode/AudioWorkletProcessor. That would
-//     make it easier to plug into someone else's code without
-//     needed tons of options
-export default class ByteBeat {
-
-  constructor() {
+class ByteBeatNode extends AudioWorkletNode {
+  static Type = {
+    byteBeat: 0,          // 0 <-> 255
+    floatBeat: 1,         // -1.0 <-> +1.0
+    signedByteBeat: 2,    // -128 <-> 127
+  };
+  static ExpressionType = {
+    infix: 0,             // sin(t / 50)
+    postfix: 1,           // t 50 / sin
+    glitch: 2,            // see docs
+    function: 3,          // return sin(t / 50)
+  };
+  static async setup(context) {
+    return context.audioWorklet.addModule(workerURL);
+  }
+  constructor(context) {
+    super(context, 'bytebeat-processor', { outputChannelCount: [2] });
 
     window.addEventListener('mousemove', (event) => {
       const data = {
@@ -393,16 +789,6 @@ export default class ByteBeat {
       }, false);
     }
 
-    // save up the messages until the AudioWorkletNode is ready
-    const msgs = [];
-    this.node = {
-      port: {
-        postMessage(data) {
-          msgs.push(data);
-        },
-      },
-    };
-
     // This is the previous expressions so we don't double compile
     this.expressions = [];
 
@@ -412,28 +798,8 @@ export default class ByteBeat {
     this.pauseTime = this.startTime;      // time since the song was paused
     this.connected = false;               // whether or not we're playing the bytebeat
 
-    const context = new AudioContext();
-    this.context = context;
     this.byteBeat = new ByteBeatProcessor(context.sampleRate);
     this._sendProperties({actualSampleRate: context.sampleRate});
-    context.audioWorklet.addModule(workerURL)
-      .then(() => {
-        this.node = new AudioWorkletNode(context, 'beat-processor', { outputChannelCount: [2] });
-        for (const msg of msgs) {
-          this.node.port.postMessage(msg);
-        }
-      });
-
-    const analyser = context.createAnalyser();
-    analyser.maxDecibels = -1;
-    this.analyser = analyser;
-
-    // Make a buffer to receive the audio data
-    const numPoints = analyser.frequencyBinCount;
-    this.audioUint8DataArray = new Uint8Array(numPoints);
-    this.audioFloat32DataArray = new Float32Array(numPoints);
-
-    this.good = true;
   }
 
   static makeContext() {
@@ -441,17 +807,34 @@ export default class ByteBeat {
   }
 
   _sendExtra(data) {
-    this.node.port.postMessage({
+    this.port.postMessage({
       cmd: 'setExtra',
       data,
     });
   }
 
   _sendProperties(data) {
-    this.node.port.postMessage({
+    this.port.postMessage({
       cmd: 'setProperties',
       data,
     });
+  }
+
+  connect(dest) {
+    super.connect(dest);
+    if (!this.connected) {
+      this.connected = true;
+      const elapsedPauseTime = performance.now() - this.pauseTime;
+      this.startTime += elapsedPauseTime;
+    }
+  }
+
+  disconnect() {
+    if (this.connected) {
+      this.connected = false;
+      this.pauseTime = performance.now();
+      super.disconnect();
+    }
   }
 
   resize(width, height) {
@@ -466,14 +849,6 @@ export default class ByteBeat {
     this.time = 0;
     this.startTime = performance.now();
     this.pauseTime = this.startTime;
-  }
-
-  resume(callback) {
-    if (this.context.resume) {
-      this.context.resume().then(callback);
-    } else {
-      callback();
-    }
   }
 
   isRunning() {
@@ -547,7 +922,7 @@ export default class ByteBeat {
     // there's no guarantee the time will be zero between
     // the message that sets the expression and the message
     // that sets the time so it's possible t will never be zero
-    this.node.port.postMessage({
+    this.port.postMessage({
       cmd: resetToZero ? 'setExpressionsAndResetToZero' : 'setExpressions',
       data: exp,
     });
@@ -608,54 +983,6 @@ export default class ByteBeat {
   getSampleForTime(time, context, stack, channel) {
     return this.byteBeat.getSampleForTime(time, context, stack, channel);
   }
-
-  getByteAudioData(destArray) {
-    destArray = destArray || this.audioUint8DataArray;
-    this.analyser.getByteFrequencyData(destArray);
-    return destArray;
-  }
-
-  getFloatAudioData(destArray) {
-    destArray = destArray || this.audioFloat32DataArray;
-    this.analyser.getFloatFrequencyData(destArray);
-    return destArray;
-  }
-
-  startOnUserGesture() {
-    if (!this.startOnUserGestureCount || this.startOnUserGestureCount < 2) {
-      this.startOnUserGestureCount = this.startOnUserGestureCount || 0;
-      ++this.startOnUserGestureCount;
-      if (this.startOnUserGestureCount === 2) {
-        // iOS requires starting a sound during a user input event.
-        const source = this.context.createOscillator();
-        source.frequency.value = 440;
-        source.connect(this.context.destination);
-        if (source.start) {
-          source.start(0);
-        }
-        setTimeout(function() {
-          source.disconnect();
-        }, 100);
-      }
-    }
-  }
-
-  play() {
-    if (this.node && !this.connected) {
-      const elapsedPauseTime = performance.now() - this.pauseTime;
-      this.startTime += elapsedPauseTime;
-      this.connected = true;
-      this.startOnUserGesture();
-      this.node.connect(this.analyser);
-      this.analyser.connect(this.context.destination);
-    }
-  }
-
-  pause() {
-    if (this.node && this.connected) {
-      this.connected = false;
-      this.pauseTime = performance.now();
-      this.node.disconnect();
-    }
-  }
 }
+
+export { ByteBeatNode as default };

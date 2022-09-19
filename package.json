@@ -2,11 +2,9 @@
   "name": "bytebeat.js",
   "version": "1.0.2",
   "description": "a bytebeat library",
-  "module": "src/ByteBeat.js",
-  "engines": {
-    "node": ">=12"
-  },
+  "module": "dist/1.x/ByteBeat.js",
   "scripts": {
+    "build": "rollup -c",
     "eslint": "eslint src/**/*.js editor/**/*.js",
     "update-songs": "node build/update-songs.js"
   },
@@ -33,6 +31,8 @@
     "eslint-plugin-one-variable-per-var": "0.0.3",
     "eslint-plugin-optional-comma-spacing": "0.0.4",
     "eslint-plugin-require-trailing-comma": "0.0.1",
-    "octokit": "^2.0.7"
+    "octokit": "^2.0.7",
+    "rollup": "^2.79.0",
+    "rollup-plugin-node-resolve": "^5.2.0"
   }
 }
