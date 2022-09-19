@@ -308,9 +308,10 @@ async function start() {
 
 ## Live examples:
 
-* [Minimal ESM]()
-* [Minimal UMD]()
-* [Simple visualizer]()
+* [Minimal ESM](https://jsgist.org/?src=668ef93e49417bf0bfafc088edf6b826)
+* [Minimal UMD](https://jsgist.org/?src=b63d9187f8ad3b7ff57831bd6ccd23b3)
+* [Simple visualizer](https://jsgist.org/?src=d1fb987c85cc1cff03f405ed210f04f6)
+* [Visualized based on AnalyserNode](https://jsgist.org/?src=36a61aa554a6da096540c3b7fcce7c78)
 
 ## API
 
