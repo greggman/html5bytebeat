@@ -31,10 +31,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#000000">
 
-<title>HTML5 Bytebeat</title>
+  <meta property="og:title" content="HTML5ByteBeat" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.png" />
+  <meta property="og:description" content="music by math" />
+  <meta property="og:url" content="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html" />
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@greggman">
+  <meta name="twitter:creator" content="@greggman">
+  <meta name="twitter:domain" content="greggman.com">
+  <meta name="twitter:title" content="HTML5ByteBeat">
+  <meta name="twitter:url" content="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html">
+  <meta name="twitter:description" content="music by math">
+  <meta name="twitter:image:src" content="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.png">
+
+  <link href="/icon.png" rel="shortcut icon" type="image/png">
+
+  <title>HTML5 Bytebeat</title>
 <script src="js/lzma.js"></script>
 <script src="js/wavmaker.js"></script>
 <style>
@@ -264,7 +282,6 @@ input {
     </div>
     <div id="foreground">
       <div id="controls"></div>
-      <!-- ((((t >> 10) & 42) * t) & 255) / 127 - 1 -->
       <textarea id="code"></textarea>
       <pre id="debug" style="display: none;"></pre>
     </div>
@@ -292,13 +309,6 @@ input {
 <div id="loadingContainer">
    <div>loading...</div>
 </div>
-<script>
-// eslint-disable-next-line no-unused-vars
-function evalHelper(s) {
-  // eslint-disable-next-line no-eval
-  return eval(s);
-}
-</script>
 <script type="module" src="editor/index.js"></script>
 </body>
 </html>
