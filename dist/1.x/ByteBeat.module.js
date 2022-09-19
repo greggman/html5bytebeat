@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.2, license MIT */
+/* ByteBeat@1.0.3, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -758,6 +758,12 @@ class ByteBeatNode extends AudioWorkletNode {
   };
   static async setup(context) {
     return context.audioWorklet.addModule(workerURL);
+  }
+  static createStack() {
+    return new WrappingStack();
+  }
+  static createContext() {
+    return ByteBeatCompiler.makeContext();
   }
   constructor(context) {
     super(context, 'bytebeat-processor', { outputChannelCount: [2] });

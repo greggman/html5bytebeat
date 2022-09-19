@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.2, license MIT */
+/* ByteBeat@1.0.3, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -764,6 +764,12 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
     };
     static async setup(context) {
       return context.audioWorklet.addModule(workerURL);
+    }
+    static createStack() {
+      return new WrappingStack();
+    }
+    static createContext() {
+      return ByteBeatCompiler.makeContext();
     }
     constructor(context) {
       super(context, 'bytebeat-processor', { outputChannelCount: [2] });
