@@ -322,7 +322,6 @@ function main() {
   });
 
   g_byteBeat.setOnCompile(handleCompileError);
-  //g_visualizer.setOnCompile(handleCompileError);
 
   if (window.location.hash) {
     const hash = window.location.hash.substr(1);
