@@ -384,7 +384,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
         mouseY: event.clientY,
       };
       this.byteBeat.setExtra(data);
-      this._sendExtra(data);
+      this.#sendExtra(data);
     }, true);
 
     if (window.DeviceOrientationEvent) {
@@ -401,7 +401,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
           compass: eventData.alpha,
         };
         this.byteBeat.setExtra(data);
-        this._sendExtra(data);
+        this.#sendExtra(data);
       }, false);
     }
 
@@ -415,17 +415,17 @@ export default class ByteBeatNode extends AudioWorkletNode {
     this.connected = false;               // whether or not we're playing the bytebeat
 
     this.byteBeat = new ByteBeatProcessor(context.sampleRate);
-    this._sendProperties({actualSampleRate: context.sampleRate});
+    this.#sendProperties({actualSampleRate: context.sampleRate});
   }
 
-  _sendExtra(data) {
+  #sendExtra(data) {
     this.port.postMessage({
       cmd: 'setExtra',
       data,
     });
   }
 
-  _sendProperties(data) {
+  #sendProperties(data) {
     this.port.postMessage({
       cmd: 'setProperties',
       data,
@@ -452,11 +452,11 @@ export default class ByteBeatNode extends AudioWorkletNode {
   resize(width, height) {
     const data = {width, height};
     this.byteBeat.setExtra(data);
-    this._sendExtra(data);
+    this.#sendExtra(data);
   }
 
   reset() {
-    this._sendProperties({time: 0});
+    this.#sendProperties({time: 0});
     this.byteBeat.reset();
     this.time = 0;
     this.startTime = performance.now();
@@ -552,8 +552,8 @@ export default class ByteBeatNode extends AudioWorkletNode {
   }
 
   setDesiredSampleRate(rate) {
-    this._sendProperties({desiredSampleRate: rate});
-    this._sendExtra({sampleRate: rate});
+    this.#sendProperties({desiredSampleRate: rate});
+    this.#sendExtra({sampleRate: rate});
     this.byteBeat.setDesiredSampleRate(rate);
   }
 
@@ -564,7 +564,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
   setExpressionType(type) {
     this.expressionType = type;
     this.byteBeat.setExpressionType(type);
-    this._sendProperties({expressionType: type});
+    this.#sendProperties({expressionType: type});
   }
 
   getExpressions() {
@@ -577,7 +577,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   setType(type) {
     this.byteBeat.setType(type);
-    this._sendProperties({type});
+    this.#sendProperties({type});
   }
 
   getType() {
