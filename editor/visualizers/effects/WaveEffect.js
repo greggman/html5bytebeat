@@ -87,18 +87,18 @@ export default class WaveEffect {
     const targetTimeMS = 1000 / (48000 / 4096);
     const now = performance.now();
     const elapsedTimeMS = now - this.then;
-    if (byteBeat.isRunning() && elapsedTimeMS >= targetTimeMS) {
+    const run = elapsedTimeMS >= targetTimeMS;
+    if (run) {
       this.then = now;
+      if (byteBeat.isRunning() ) {
+        const startTime = this.position;
+        const endTime = startTime + elapsedTimeMS * 0.001 * byteBeat.getDesiredSampleRate() | 0;
+        const duration = (endTime - startTime);
 
-      const startTime = this.position;
-      const endTime = startTime + elapsedTimeMS * 0.001 * byteBeat.getDesiredSampleRate() | 0;
-      const duration = (endTime - startTime);
+        this.position = endTime;
+        for (let channel = 0; channel < numChannels; ++channel) {
+          const bufferInfo = channel ? bufferInfoR : bufferInfoL;
 
-      this.position = endTime;
-      for (let channel = 0; channel < numChannels; ++channel) {
-        const bufferInfo = channel ? bufferInfoR : bufferInfoL;
-
-        if (byteBeat.isRunning()) {
           const dst = channel ? this.lineHeightR : this.lineHeightL;
           for (let i = 0; i < dst.length; ++i) {
             const position = startTime + i * duration / dst.length | 0;
