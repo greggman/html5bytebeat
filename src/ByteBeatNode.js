@@ -418,10 +418,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
     this._sendProperties({actualSampleRate: context.sampleRate});
   }
 
-  static makeContext() {
-    return ByteBeatCompiler.makeContext();
-  }
-
   _sendExtra(data) {
     this.port.postMessage({
       cmd: 'setExtra',

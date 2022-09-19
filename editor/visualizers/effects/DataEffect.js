@@ -1,6 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
 import ByteBeatNode from '../../../src/ByteBeatNode.js';
-import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
 const colorBlue = new Float32Array([0, 0, 1, 1]);
@@ -68,8 +67,8 @@ export default class DataEffect {
     }
   }
   resize(gl) {
-    this.dataContext = ByteBeatNode.makeContext();
-    this.dataStack = new WrappingStack();
+    this.dataContext = ByteBeatNode.createContext();
+    this.dataStack = ByteBeatNode.createStack();
 
     this.dataWidth = gl.drawingBufferWidth;
     const dataBuf = new Uint8Array(this.dataWidth);

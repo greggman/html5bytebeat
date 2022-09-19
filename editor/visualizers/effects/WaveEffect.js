@@ -1,6 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
 import ByteBeatNode from '../../../src/ByteBeatNode.js';
-import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
 const colorRed = new Float32Array([1, 0, 0, 1]);
@@ -45,8 +44,8 @@ export default class WaveEffect {
     this.position = 0;
   }
   resize(gl) {
-    this.beatContext = ByteBeatNode.makeContext();
-    this.beatStack = new WrappingStack();
+    this.beatContext = ByteBeatNode.createContext();
+    this.beatStack = ByteBeatNode.createStack();
 
     const width = gl.drawingBufferWidth;
     const lineHeight = new Float32Array(width);

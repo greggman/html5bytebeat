@@ -1,7 +1,6 @@
 /* global LZMA */
 /* global WavMaker */
 import ByteBeatNode from '../src/ByteBeatNode.js';
-import WrappingStack from '../src/WrappingStack.js';
 import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
@@ -490,8 +489,8 @@ function showSaveDialog() {
         const numSamplesNeeded = sampleRate * numSeconds | 0;
         const numChannels = 2;
         const wavMaker = new WavMaker(sampleRate, numChannels);
-        const context = ByteBeatNode.makeContext();
-        const stack = new WrappingStack();
+        const context = ByteBeatNode.createContext();
+        const stack = ByteBeatNode.createStack();
         for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
           const start = i;
           const end = Math.min(i + sampleRate, numSamplesNeeded);

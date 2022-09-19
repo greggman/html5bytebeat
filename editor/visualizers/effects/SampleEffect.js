@@ -1,6 +1,5 @@
 import * as twgl from '../../../js/twgl-full.module.js';
 import ByteBeatNode from '../../../src/ByteBeatNode.js';
-import WrappingStack from '../../../src/WrappingStack.js';
 import { drawEffect } from './effect-utils.js';
 
 export default class SampleEffect {
@@ -53,8 +52,8 @@ export default class SampleEffect {
         gl.LUMINANCE, gl.UNSIGNED_BYTE, this.sampleBuf);
   }
   resize(gl) {
-    this.sampleContext = ByteBeatNode.makeContext();
-    this.sampleStack = new WrappingStack();
+    this.sampleContext = ByteBeatNode.createContext();
+    this.sampleStack = ByteBeatNode.createStack();
 
     this.sampleWidth = gl.drawingBufferWidth;
     const sampleBuf = new Uint8Array(this.sampleWidth);
@@ -66,7 +65,7 @@ export default class SampleEffect {
         gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
     this.sampleBuf = sampleBuf;
     this.sampleTime = 0;
-  } 
+  }
   render(gl, commonUniforms, byteBeat) {
     const {uniforms, programInfo, bufferInfo} = this;
 
