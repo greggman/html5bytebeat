@@ -283,7 +283,7 @@ Special thanks to:
 * Paul Pridham for his [Glitch Machine iOS Bytebeat program](http://madgarden.net/apps/glitch-machine/).
 * Mr.Doob for his [GLSL Sandbox](http://mrdoob.com/projects/glsl_sandbox/) where much of this code was cribbed.
 * Nathan Rugg for his [LZMA-JS library](https://github.com/nmrugg/LZMA-JS).
-* Darius Bacon for his [bytebeat program](https://github.com/darius/bytebeat) and for tips and examples to test it.
+* Darius Bacon for his [bytebeat program](https://github.com/joshuaword2alt/bytebeat) and for tips and examples to test it.
 
 # Library
 
