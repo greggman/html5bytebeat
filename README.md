@@ -296,6 +296,7 @@ import ByteBeatNode from 'https://greggman.github.io/html5byteabeat/dist/1.x/Byt
 
 async function start() {
   const context = new AudioContext();
+  context.resume();  // needed for safari
   await ByteBeatNode.setup(context);
   byteBeatNode = new ByteBeatNode(context);
   byteBeatNode.setType(ByteBeatNode.Type.byteBeat);
