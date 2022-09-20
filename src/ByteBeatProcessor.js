@@ -10,7 +10,6 @@ export default class ByteBeatProcessor {
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
           const s = fn0((time) / divisor, undefined, stack0, ctx0, extra);
-          const ndx = 
           buffer0[time % buffer0.length] = (s[0] & 255) / 127 - 1;
           buffer1[time % buffer1.length] = (s[1] & 255) / 127 - 1;
           ++time;
