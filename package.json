@@ -1,6 +1,6 @@
 {
   "name": "bytebeat.js",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "a bytebeat library",
   "module": "dist/1.x/ByteBeat.js",
   "scripts": {
