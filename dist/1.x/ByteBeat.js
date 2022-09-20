@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.3, license MIT */
+/* ByteBeat@1.0.4, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -405,27 +405,30 @@
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = (s[0] & 255) / 127 - 1;
-            buffer1[i] = (s[1] & 255) / 127 - 1;
+            const s = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+            buffer0[time % buffer0.length] = (s[0] & 255) / 127 - 1;
+            buffer1[time % buffer1.length] = (s[1] & 255) / 127 - 1;
+            ++time;
           }
         },
         // case 1:  // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++ / divisor), undefined, stack0, ctx0, extra);
-            buffer0[i] = s[0];
-            buffer1[i] = s[1];
+            const s = fn0((time / divisor), undefined, stack0, ctx0, extra);
+            buffer0[time % buffer0.length] = s[0];
+            buffer1[time % buffer1.length] = s[1];
+            ++time;
           }
         },
         // case 2:  // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+            const s = fn0((time) / divisor, undefined, stack0, ctx0, extra);
             int8[0] = s[0];
-            buffer0[i] = int8[0] / 128;
+            buffer0[time % buffer0.length] = int8[0] / 128;
             int8[0] = s[1];
-            buffer1[i] = int8[0] / 128;
+            buffer1[time % buffer1.length] = int8[0] / 128;
+            ++time;
           }
         },
       ],
@@ -433,24 +436,26 @@
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = (fn0((time  ) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-            buffer1[i] = (fn1((time++) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+            buffer0[time % buffer0.length] = (fn0((time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+            buffer1[time % buffer1.length] = (fn1((time) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+            ++time;
           }
         },
         // case 1:  // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-            buffer1[i] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
+            buffer0[time % buffer0.length] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+            buffer1[time % buffer1.length] = fn1((time) / divisor, undefined, stack1, ctx1, extra);
           }
         },
         // case 2:  // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0((time  ) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = int8[0] / 128;
-            int8[0] = fn1((time++) / divisor, undefined, stack1, ctx1, extra);
-            buffer1[i] = int8[0] / 128;
+            int8[0] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+            buffer0[time % buffer0.length] = int8[0] / 128;
+            int8[0] = fn1((time) / divisor, undefined, stack1, ctx1, extra);
+            buffer1[time % buffer1.length] = int8[0] / 128;
+            ++time;
           }
         },
       ],
@@ -458,20 +463,23 @@
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = (fn0((time++) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+            buffer0[time % buffer0.length] = (fn0((time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+            ++time;
           }
         },
         // case 1: // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[i] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
+            buffer0[time % buffer0.length] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+            ++time;
           }
         },
         // case 2: // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
           for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0((time++) / divisor, undefined, stack0, ctx0, extra);
-            buffer0[i] = int8[0] / 128;
+            int8[0] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+            buffer0[time % buffer0.length] = int8[0] / 128;
+            ++time;
           }
         },
       ],
@@ -480,24 +488,30 @@
     static interpolate(buf, ndx) {
       const n = ndx | 0;
       const f = ndx % 1;
-      const v0 = buf[n];
-      const v1 = buf[n + 1];
+      const v0 = buf[(n    ) % buf.length];
+      const v1 = buf[(n + 1) % buf.length];
       return v0 + (v1 - v0) * f;
     }
 
     static trunc(buf, ndx) {
-      return buf[ndx | 0];
+      return buf[(ndx | 0) % buf.length];
     }
 
-
-
-    constructor(actualSampleRate) {
-      this.actualSampleRate = actualSampleRate;
+    constructor() {
       this.buffer0 = new Float32Array(4096);
       this.buffer1 = new Float32Array(4096);
       this.desiredSampleRate = 8000;
-      this.time = 0;
+      // This is the sample # for the output to the WebAudio API.
+      // In other words this will increment by actualSampleRate units per second
+      this.dstSampleCount = 0;
+      // This is the sample # for the bytebeat data.
+      // In other words this will increment by desiredSampleRate units per second
+      this.srcSampleCount = 0;
+
+      // This would be used to select a re-sampler but all I have ATM
+      // is linear interpolation which sucks.
       this.expandMode = 0;
+
       this.type = 0;
       this.expressionType = 0;
       this.functions = [
@@ -515,11 +529,8 @@
     }
 
     reset() {
-      this.time = 0;
-    }
-
-    setProperties(props) {
-      Object.assign(this, props);
+      this.dstSampleCount = 0;
+      this.srcSampleCount = 0;
     }
 
     setExtra(props) {
@@ -527,7 +538,7 @@
     }
 
     getTime() {
-      return this.convertToDesiredSampleRate(this.time);
+      return this.convertToDesiredSampleRate(this.dstSampleCount);
     }
 
     recompile() {
@@ -536,6 +547,10 @@
 
     convertToDesiredSampleRate(rate) {
       return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+    }
+
+    setActualSampleRate(rate) {
+      this.actualSampleRate = rate;
     }
 
     setDesiredSampleRate(rate) {
@@ -575,11 +590,12 @@
     }
 
     process(dataLength, leftData, rightData) {
-      const time = this.convertToDesiredSampleRate(this.time);
-      const lastSample = this.convertToDesiredSampleRate(dataLength) + 2;
-      if (this.buffer0.length < lastSample) {
-        this.buffer0 = new Float32Array(lastSample);
-        this.buffer1 = new Float32Array(lastSample);
+      const neededSrcStartSampleId = this.convertToDesiredSampleRate(this.dstSampleCount);
+      const neededSrcEndSampleId = this.convertToDesiredSampleRate(this.dstSampleCount + dataLength) + 2;
+      const numNeededSrcSamples = neededSrcEndSampleId - neededSrcStartSampleId;
+      if (this.buffer0.length < numNeededSrcSamples) {
+        this.buffer0 = new Float32Array(numNeededSrcSamples);
+        this.buffer1 = new Float32Array(numNeededSrcSamples);
       }
       //
       const fn0 = this.functions[0].f;
@@ -594,20 +610,23 @@
       const extra = this.extra;
       const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
 
+      const startSrcId = Math.max(this.srcSampleCount, neededSrcStartSampleId);
+      const numSrcSampleToGenerate = neededSrcEndSampleId - startSrcId;
+
       const samplerGroup = fn0Array
           ? ByteBeatProcessor.s_samplers.array
           : fn1
               ? ByteBeatProcessor.s_samplers.twoChannels
               : ByteBeatProcessor.s_samplers.oneChannel;
       const sampler = samplerGroup[this.type];
-      sampler(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample);
+      sampler(buffer0, buffer1, fn0, fn1, startSrcId, divisor, stack0, stack1, ctx0, ctx1, extra, numSrcSampleToGenerate);
 
       if (dataLength) {
-        const step = this.convertToDesiredSampleRate(dataLength) / dataLength;
+        let ndx = this.dstSampleCount * this.desiredSampleRate / this.actualSampleRate;
+        const step = this.desiredSampleRate / this.actualSampleRate;
         const expandFn = this.expandMode ? ByteBeatProcessor.interpolate : ByteBeatProcessor.trunc;
 
         if (rightData) {
-          let ndx = 0;
           for (let i = 0; i < dataLength; ++i) {
             leftData[i] = expandFn(buffer0, ndx);
             rightData[i] = expandFn(buffer1, ndx);
@@ -646,7 +665,7 @@
 
       // I don't know why this -2 is needed!
       // If I don't add it I get a glitch
-      this.time += dataLength - 2;
+      this.dstSampleCount += dataLength;
     }
 
     getSampleForTime(time, context, stack, channel = 0) {
@@ -674,12 +693,6 @@
       }
     }
   }
-
-  //const s_samplers = {
-  //${[...Object.entries(s_samplers)].map(([key, value]) => {
-  //  return `${key}: [${value.map(fn => `${fn.toString()}`).join(',\n')}\n]`;
-  //}).join(',\n')}
-  //};
 
   const beatProcessorJS = `
 const int8 = new Int8Array(1);
@@ -713,13 +726,12 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   }
 
   // TODO: replace
-  setProperties(data) {
-    this.byteBeat.setProperties(data);
-  }
-
-  // TODO: replace
   setExtra(data) {
     this.byteBeat.setExtra(data);
+  }
+
+  callFunc({fn, args}) {
+    this.byteBeat[fn].call(this.byteBeat, ...args);
   }
 
   setExpressions(data) {
@@ -780,7 +792,7 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
           mouseY: event.clientY,
         };
         this.byteBeat.setExtra(data);
-        this._sendExtra(data);
+        this.#sendExtra(data);
       }, true);
 
       if (window.DeviceOrientationEvent) {
@@ -797,7 +809,7 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
             compass: eventData.alpha,
           };
           this.byteBeat.setExtra(data);
-          this._sendExtra(data);
+          this.#sendExtra(data);
         }, false);
       }
 
@@ -810,25 +822,25 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
       this.pauseTime = this.startTime;      // time since the song was paused
       this.connected = false;               // whether or not we're playing the bytebeat
 
-      this.byteBeat = new ByteBeatProcessor(context.sampleRate);
-      this._sendProperties({actualSampleRate: context.sampleRate});
+      this.byteBeat = new ByteBeatProcessor();
+      this.byteBeat.setActualSampleRate(context.sampleRate);
+      this.#callFunc('setActualSampleRate', context.sampleRate);
     }
 
-    static makeContext() {
-      return ByteBeatCompiler.makeContext();
-    }
-
-    _sendExtra(data) {
+    #sendExtra(data) {
       this.port.postMessage({
         cmd: 'setExtra',
         data,
       });
     }
 
-    _sendProperties(data) {
+    #callFunc(fnName, ...args) {
       this.port.postMessage({
-        cmd: 'setProperties',
-        data,
+        cmd: 'callFunc',
+        data: {
+          fn: fnName,
+          args,
+        },
       });
     }
 
@@ -852,11 +864,11 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
     resize(width, height) {
       const data = {width, height};
       this.byteBeat.setExtra(data);
-      this._sendExtra(data);
+      this.#sendExtra(data);
     }
 
     reset() {
-      this._sendProperties({time: 0});
+      this.#callFunc('reset');
       this.byteBeat.reset();
       this.time = 0;
       this.startTime = performance.now();
@@ -952,8 +964,7 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
     }
 
     setDesiredSampleRate(rate) {
-      this._sendProperties({desiredSampleRate: rate});
-      this._sendExtra({sampleRate: rate});
+      this.#callFunc('setDesiredSampleRate', rate);
       this.byteBeat.setDesiredSampleRate(rate);
     }
 
@@ -964,7 +975,7 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
     setExpressionType(type) {
       this.expressionType = type;
       this.byteBeat.setExpressionType(type);
-      this._sendProperties({expressionType: type});
+      this.#callFunc('setExpressionType', type);
     }
 
     getExpressions() {
@@ -977,7 +988,7 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
 
     setType(type) {
       this.byteBeat.setType(type);
-      this._sendProperties({type});
+      this.#callFunc('setType', type);
     }
 
     getType() {
