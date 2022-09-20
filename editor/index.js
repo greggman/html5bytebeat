@@ -182,6 +182,7 @@ async function main() {
   controls = $('controls');
 
   g_context = new AudioContext();
+  g_context.resume();  // needed for safari
   await ByteBeatNode.setup(g_context);
   g_byteBeat = new ByteBeatNode(g_context);
 
