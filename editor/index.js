@@ -16,6 +16,7 @@ function strip(s) {
 
 let g_context;
 let g_byteBeat;
+let g_filter;
 let g_analyser;
 let g_visualizers;
 let g_visualizer;
@@ -134,7 +135,12 @@ function play() {
     playing = true;
     //const elapsedPauseTime = performance.now() - this.pauseTime;
     //this.startTime += elapsedPauseTime;
-    g_byteBeat.connect(g_analyser);
+    if (g_filter) {
+      g_byteBeat.connect(g_filter);
+      g_filter.connect(g_analyser);
+    } else {
+      g_byteBeat.connect(g_analyser);
+    }
     g_analyser.connect(g_context.destination);
   }
 }
@@ -158,6 +164,10 @@ async function main() {
 
   g_analyser = g_context.createAnalyser();
   g_analyser.maxDecibels = -1;
+
+  // g_filter = g_context.createBiquadFilter();
+  // g_filter.type = 'lowpass';
+  // g_filter.frequency.value = 4000;
 
   g_screenshotCanvas = document.createElement('canvas');
   g_screenshotCanvas.width = 400;
