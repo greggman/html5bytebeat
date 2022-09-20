@@ -1,6 +1,9 @@
 import * as twgl from '../../../js/twgl-full.module.js';
 import { drawEffect } from './effect-utils.js';
 
+const colorDarkCyan = [0, 0.7, 0.7, 1];
+const colorDarkYellow = [0.7, 0.7, 0, 1];
+
 export default class FFTEffect {
   constructor(gl) {
     this.programInfo = twgl.createProgramInfo(gl, [
@@ -59,30 +62,37 @@ export default class FFTEffect {
       this.bufferInfo.numElements = width * 2;
     }
   }
-  render(gl, commonUniforms, byteBeat, analyser) {
-    this.data = this.data || new Uint8Array(analyser.frequencyBinCount);
+  render(gl, commonUniforms, byteBeat, analyzers) {
+    this.data = this.data || new Uint8Array(analyzers[0].frequencyBinCount);
     const data = this.data;
-    analyser.getByteFrequencyData(data);
-    const dst = this.lineHeight;
-    const v = this.oneVerticalPixel;
-    const v2 = v * 2;
-    let h1 = data[0] / 128 - 1;
-    for (let i = 0; i < dst.length; i += 2) {
-      const ndx = i * data.length / dst.length | 0;
-      const h2 = data[ndx] / 128 - 1;
-      const dy = h1 - h2;
-      dst[i] = h1;
-      dst[i + 1] = (Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2)));
-      h1 = h2;
+    const numChannels = byteBeat.getNumChannels();
+    for (let ch = 0; ch < numChannels; ++ch) {
+      analyzers[ch].getByteFrequencyData(data);
+      const dst = this.lineHeight;
+      const v = this.oneVerticalPixel;
+      const v2 = v * 2;
+      let h1 = data[0] / 128 - 1;
+      for (let i = 0; i < dst.length; i += 2) {
+        const ndx = i * data.length / dst.length | 0;
+        const h2 = data[ndx] / 128 - 1;
+        const dy = h1 - h2;
+        dst[i] = h1;
+        dst[i + 1] = (Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2)));
+        h1 = h2;
+      }
+
+      const {uniforms, programInfo, bufferInfo} = this;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.lineHeight);
+
+      uniforms.position = this.position / this.width;
+      //uniforms.offset[0] = ch / gl.drawingBufferWidth;
+      uniforms.color = ch ? colorDarkYellow : colorDarkCyan;
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      drawEffect(gl, programInfo, bufferInfo, uniforms, commonUniforms, gl.LINES);
+      gl.disable(gl.BLEND);
     }
-
-    const {uniforms, programInfo, bufferInfo} = this;
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.lineHeight);
-
-    uniforms.position = this.position / this.width;
-    uniforms.offset[0] = 0;
-    drawEffect(gl, programInfo, bufferInfo, uniforms, commonUniforms, gl.LINES);
   }
 }

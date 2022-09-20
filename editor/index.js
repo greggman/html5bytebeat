@@ -17,7 +17,10 @@ function strip(s) {
 let g_context;
 let g_byteBeat;
 let g_filter;
-let g_analyser;
+const g_analyzers = [];
+let g_splitter;
+let g_merger;
+let g_isSplit;
 let g_visualizers;
 let g_visualizer;
 let g_screenshot;
@@ -130,25 +133,45 @@ function score({user, reactions, groupSize}) {
        reactions['-1']) / groupSize;
 }
 
+/*
+  ByteBeatNode--->Splitter--->analyser---->merger---->context
+                      \                  /
+                       \----->analyser--/
+*/
+function connectFor2Channels() {
+  g_byteBeat.disconnect();
+  g_byteBeat.connect(g_splitter);
+  g_splitter.connect(g_analyzers[0], 0);
+  g_splitter.connect(g_analyzers[1], 1);
+  g_analyzers[0].connect(g_merger, 0, 0);
+  g_analyzers[1].connect(g_merger, 0, 1);
+  return g_merger;
+}
+
+function reconnect() {
+  const is2Channels = g_byteBeat.getNumChannels() === 2;
+  if (g_isSplit !== is2Channels) {
+    g_isSplit = is2Channels;
+    const lastNode = connectFor2Channels();
+    if (g_filter) {
+      lastNode.connect(g_filter);
+      g_filter.connect(g_context.destination);
+    } else {
+      lastNode.connect(g_context.destination);
+    }
+  }
+}
+
 function play() {
   if (!playing) {
     playing = true;
-    //const elapsedPauseTime = performance.now() - this.pauseTime;
-    //this.startTime += elapsedPauseTime;
-    if (g_filter) {
-      g_byteBeat.connect(g_filter);
-      g_filter.connect(g_analyser);
-    } else {
-      g_byteBeat.connect(g_analyser);
-    }
-    g_analyser.connect(g_context.destination);
+    reconnect();
   }
 }
 
 function pause() {
   if (playing) {
     playing = false;
-    //this.pauseTime = performance.now();
     g_byteBeat.disconnect();
   }
 }
@@ -162,8 +185,13 @@ async function main() {
   await ByteBeatNode.setup(g_context);
   g_byteBeat = new ByteBeatNode(g_context);
 
-  g_analyser = g_context.createAnalyser();
-  g_analyser.maxDecibels = -1;
+  g_analyzers.push(g_context.createAnalyser(), g_context.createAnalyser());
+  g_analyzers.forEach(a => {
+    a.maxDecibels = -1;
+  });
+
+  g_splitter = g_context.createChannelSplitter(2);
+  g_merger = g_context.createChannelMerger(2);
 
   // g_filter = g_context.createBiquadFilter();
   // g_filter.type = 'lowpass';
@@ -177,7 +205,7 @@ async function main() {
   function resetToZero() {
     g_byteBeat.reset();
     g_visualizer.reset();
-    g_visualizer.render(g_byteBeat, g_analyser);
+    g_visualizer.render(g_byteBeat, g_analyzers);
     updateTimeDisplay();
   }
 
@@ -368,7 +396,7 @@ async function main() {
     requestAnimationFrame(render, canvas);
     if (playing) {
       updateTimeDisplay();
-      g_visualizer.render(g_byteBeat, g_analyser);
+      g_visualizer.render(g_byteBeat, g_analyzers);
     }
   }
   render();

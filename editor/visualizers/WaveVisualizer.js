@@ -57,7 +57,7 @@ export default class WaveVisualizer extends Visualizer {
     }
   }
 
-  render(byteBeat, analyser) {
+  render(byteBeat, analyzers) {
     const gl = this.gl;
     gl.clearColor(0, 0, 0.3, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -68,7 +68,7 @@ export default class WaveVisualizer extends Visualizer {
     this.commonUniforms.time = (now - this.then) * 0.001;
 
     for (const effect of this.effects) {
-      effect.render(gl, this.commonUniforms, byteBeat, analyser);
+      effect.render(gl, this.commonUniforms, byteBeat, analyzers);
     }
 
     this.handleCapture();
