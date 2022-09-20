@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.4, license MIT */
+/* ByteBeat@1.0.5, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -786,31 +786,34 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
     constructor(context) {
       super(context, 'bytebeat-processor', { outputChannelCount: [2] });
 
-      window.addEventListener('mousemove', (event) => {
-        const data = {
-          mouseX: event.clientX,
-          mouseY: event.clientY,
-        };
-        this.byteBeat.setExtra(data);
-        this.#sendExtra(data);
-      }, true);
-
-      if (window.DeviceOrientationEvent) {
-        // Listen for the deviceorientation event and handle the raw data
-        window.addEventListener('deviceorientation', (eventData) => {
+      // TODO: this should arguably not exist here
+      if (typeof window !== 'undefined') {
+        window.addEventListener('mousemove', (event) => {
           const data = {
-            // gamma is the left-to-right tilt in degrees, where right is positive
-            tiltX: eventData.gamma,
-
-            // beta is the front-to-back tilt in degrees, where front is positive
-            tiltY: eventData.beta,
-
-            // alpha is the compass direction the device is facing in degrees
-            compass: eventData.alpha,
+            mouseX: event.clientX,
+            mouseY: event.clientY,
           };
           this.byteBeat.setExtra(data);
           this.#sendExtra(data);
-        }, false);
+        }, true);
+
+        if (window.DeviceOrientationEvent) {
+          // Listen for the deviceorientation event and handle the raw data
+          window.addEventListener('deviceorientation', (eventData) => {
+            const data = {
+              // gamma is the left-to-right tilt in degrees, where right is positive
+              tiltX: eventData.gamma,
+
+              // beta is the front-to-back tilt in degrees, where front is positive
+              tiltY: eventData.beta,
+
+              // alpha is the compass direction the device is facing in degrees
+              compass: eventData.alpha,
+            };
+            this.byteBeat.setExtra(data);
+            this.#sendExtra(data);
+          }, false);
+        }
       }
 
       // This is the previous expressions so we don't double compile
