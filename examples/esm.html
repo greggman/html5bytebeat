@@ -11,6 +11,7 @@ let g_playing = false;
 
 async function init() {
   g_context = new AudioContext();
+  g_context.resume();  // needed for safari
   await ByteBeatNode.setup(g_context);
   g_byteBeatNode = new ByteBeatNode(g_context);
   g_byteBeatNode.setType(ByteBeatNode.Type.byteBeat);
