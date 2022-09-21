@@ -81,6 +81,7 @@ async function loadSongs() {
     const localBase = `${window.location.origin}${window.location.pathname}`;
     const origBase = 'https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html';
     const songsElem = document.querySelector('#songs');
+    const songListElem = songsElem.querySelector('#song-list');
 
     const sortedSongs = songs.slice().sort((a, b) => {
       const scoreA = score(a);
@@ -114,7 +115,7 @@ async function loadSongs() {
             ]),
           )),
       ]);
-      songsElem.appendChild(details);
+      songListElem.appendChild(details);
     }
 
     function highlightLink() {

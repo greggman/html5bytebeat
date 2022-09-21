@@ -98,17 +98,31 @@ summary:hover {
     width: 300px;
     max-width: 35%;
     height: 100%;
-    overflow: auto;
     word-break: break-word;
     background-color: rgba(64, 64, 64, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+#song-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
 }
 #songs a {
     list-style: circle outside;
     margin-left: 1.5em;
+    margin-bottom: 0.5em;
     display: list-item;
+    max-height: 3.5em;
+    overflow-y: hidden;
+}
+#search:focus,
+summary:focus,
+#songs a:focus {
+    outline: 1px solid rgba(100, 50, 255, 1);
 }
 #songs a:nth-child(odd) {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.8);
 }
 #songs a:hover {
     color: magenta;
@@ -282,6 +296,12 @@ input {
   #code {
     font-size: 16px;
   }
+  #songs a {
+      margin-left: 1em;
+  }
+  details>* {
+    margin-left: 0.5em;
+  }
 }
 </style>
 </head>
@@ -299,6 +319,7 @@ input {
   </div>
   <div style="display: none;" id="songs">
       <input id="search" type="text" placeholder="Search" autocomplete="off" />
+      <div id="song-list"></div>
   </div>
 </div>
 <button id="showSongs"> ▶ beats</button>
