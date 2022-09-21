@@ -1,0 +1,84 @@
+<style>
+pre { margin: 0; } 
+</style>
+<body>
+<p>Reads the local songs.json and tries to compile each song</p>
+<hr>
+</body>
+<script src="../js/lzma.js"></script>
+<script type="module">
+/* global LZMA */
+import ByteBeatCompiler from '../src/ByteBeatCompiler.js';
+import {
+  convertHexToBytes,
+  splitBySections,
+} from '../editor/utils.js';
+
+const compressor = new LZMA( '../js/lzma_worker.js' );
+
+function decompress(bytes) {
+  return new Promise(resolve => {
+    compressor.decompress(bytes, resolve);
+  });
+}
+
+function compileExpressions(expressions, expressionType) {
+  const extra = ByteBeatCompiler.makeExtra();
+  for (let i = 0; i < expressions.length; ++i) {
+    const exp = expressions[i];
+    ByteBeatCompiler.compileExpression(exp, expressionType, extra);
+  }
+}
+
+function logImpl(color, ...args) {
+  const elem = document.createElement('pre');
+  elem.textContent = args.join(' ');
+  elem.style.color = color;
+  document.body.appendChild(elem);
+}
+
+const log = (...args) => logImpl('', ...args);
+const error = (...args) => logImpl('red', ...args);
+
+async function main() {
+  const req = await fetch('../editor/songs.json');
+  const songs = await req.json();
+  const bad = [];
+  let count = 0;
+  for (const {title, link} of songs) {
+    log('test:', ++count, title);
+    const url = new URL(link);
+    const hash = url.hash.substr(1);
+    const args = hash.split('&');
+    const data = {};
+    for (let i = 0; i < args.length; ++i) {
+      const parts = args[i].split('=');
+      data[parts[0]] = parts[1];
+    }
+    //const t = data.t !== undefined ? parseFloat(data.t) : 1;
+    const e = data.e !== undefined ? parseFloat(data.e) : 0;
+    //const s = data.s !== undefined ? parseFloat(data.s) : 8000;
+    const bytes = convertHexToBytes(data.bb);
+    const text = await decompress(bytes);
+
+    try {
+      const sections = splitBySections(text);
+      if (sections.default || sections.channel1) {
+        const expressions = [sections.default || sections.channel1];
+        if (sections.channel2) {
+          expressions.push(sections.channel2);
+        }
+        compileExpressions(expressions, e);
+      }
+    } catch (err) {
+      error(`failed to compile: ${title}`);
+      error(err);
+      bad.push({title, link});
+    }
+  }
+  log(JSON.stringify(bad, null, 2));
+}
+
+
+main();
+</script>
