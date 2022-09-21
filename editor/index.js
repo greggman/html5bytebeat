@@ -109,13 +109,37 @@ async function loadSongs() {
             el('details', {className: 'sub-category', open: true}, [
               el('summary', {textContent: subCategory}),
               el('div', {}, songs.map(({title, link, sampleRate}) => {
-                return el('a', {href: link.replace(origBase, localBase), textContent: `${title} (${sampleRate})`});
+                return el('a', {href: link.replace(origBase, localBase), textContent: `${title} (${sampleRate})`, onClick: highlightLink});
               })),
             ]),
           )),
       ]);
       songsElem.appendChild(details);
     }
+
+    function highlightLink() {
+      const links = songsElem.querySelectorAll('a');
+      for (const link of links) {
+        link.classList.toggle('highlight', link === this);
+      }
+    }
+
+    const searchElem = document.querySelector('#search');
+    function search() {
+      const str = searchElem.value.toLowerCase();
+      const links = songsElem.querySelectorAll('a');
+
+      links.forEach(function(link){
+        const text = link.textContent.toLowerCase();
+        if (str.length && !text.includes(str)) {
+          link.classList.add('hide');
+        } else {
+          link.classList.remove('hide');
+        }
+      });
+    }
+
+    searchElem.addEventListener('keyup', search);
 
     showSongsElem.addEventListener('click', () => {
       const show = !!songsElem.style.display;

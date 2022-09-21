@@ -232,6 +232,16 @@ input {
    color: white;
    border: none;
 }
+#search {
+  margin-top: 32px;
+  width: 100%;
+}
+.highlight {
+  color: red !important;
+}
+.hide {
+  display: none !important;
+}
 #loadingContainer,
 #startContainer {
   display: flex;
@@ -288,6 +298,7 @@ input {
     </div>
   </div>
   <div style="display: none;" id="songs">
+      <input id="search" type="text" placeholder="Search" autocomplete="off" />
   </div>
 </div>
 <button id="showSongs"> ▶ beats</button>
