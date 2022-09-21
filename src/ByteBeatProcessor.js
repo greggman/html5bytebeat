@@ -9,7 +9,7 @@ export default class ByteBeatProcessor {
       // case 0: // bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          const s = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+          const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
           buffer0[time % buffer0.length] = (s[0] & 255) / 127 - 1;
           buffer1[time % buffer1.length] = (s[1] & 255) / 127 - 1;
           ++time;
@@ -18,7 +18,7 @@ export default class ByteBeatProcessor {
       // case 1:  // floatbeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          const s = fn0((time / divisor), undefined, stack0, ctx0, extra);
+          const s = fn0.call(ctx0, (time / divisor), undefined, stack0, ctx0, extra);
           buffer0[time % buffer0.length] = s[0];
           buffer1[time % buffer1.length] = s[1];
           ++time;
@@ -27,7 +27,7 @@ export default class ByteBeatProcessor {
       // case 2:  // signed bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          const s = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+          const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
           int8[0] = s[0];
           buffer0[time % buffer0.length] = int8[0] / 128;
           int8[0] = s[1];
@@ -40,24 +40,24 @@ export default class ByteBeatProcessor {
       // case 0: // bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = (fn0((time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-          buffer1[time % buffer1.length] = (fn1((time) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+          buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+          buffer1[time % buffer1.length] = (fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
           ++time;
         }
       },
       // case 1:  // floatbeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
-          buffer1[time % buffer1.length] = fn1((time) / divisor, undefined, stack1, ctx1, extra);
+          buffer0[time % buffer0.length] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+          buffer1[time % buffer1.length] = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
         }
       },
       // case 2:  // signed bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          int8[0] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+          int8[0] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
           buffer0[time % buffer0.length] = int8[0] / 128;
-          int8[0] = fn1((time) / divisor, undefined, stack1, ctx1, extra);
+          int8[0] = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
           buffer1[time % buffer1.length] = int8[0] / 128;
           ++time;
         }
@@ -67,21 +67,21 @@ export default class ByteBeatProcessor {
       // case 0: // bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = (fn0((time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+          buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
           ++time;
         }
       },
       // case 1: // floatbeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[time % buffer0.length] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
           ++time;
         }
       },
       // case 2: // signed bytebeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          int8[0] = fn0((time) / divisor, undefined, stack0, ctx0, extra);
+          int8[0] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
           buffer0[time % buffer0.length] = int8[0] / 128;
           ++time;
         }
