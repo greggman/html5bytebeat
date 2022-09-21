@@ -257,8 +257,8 @@ return function(t) {
 ```
 
 But again, What is the point? If you're going to write real code with no limits
-then why do it this way all? Just write code, no need to try to cram it into a
-bytebeat player.
+then why do it this way all? [Just write code](https://jsgist.org/?src=5c0429e50839b546a38ce9dbb66c2ab3),
+no need to try to cram it into a bytebeat player.
 
 Then I found that some people had added a time divisor. For example, instead of
 `t` counting in samples it can count in seconds (fractional values). But again,
