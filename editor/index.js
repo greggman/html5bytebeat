@@ -5,6 +5,11 @@ import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
 import {createElem as el} from './elem.js';
+import {
+  convertBytesToHex,
+  convertHexToBytes,
+  splitBySections,
+} from './utils.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -575,29 +580,6 @@ function updateTimeDisplay() {
   timeElem.innerHTML = g_byteBeat.getTime();
 }
 
-// Splits a string, looking for //:name
-const g_splitRE = new RegExp(/\/\/:([a-zA-Z0-9_-]+)(.*)/);
-function splitBySections(str) {
-  const sections = {};
-
-  function getNextSection(str) {
-    const pos = str.search(g_splitRE);
-    if (pos < 0) {
-      return str;
-    }
-    const m = str.match(g_splitRE);
-    const sectionName = m[1];
-    const newStr = getNextSection(str.substring(pos + 3 + sectionName.length));
-    sections[sectionName] = newStr;
-    return str.substring(0, pos);
-  }
-  str = getNextSection(str);
-  if (str.length) {
-    sections.default = str;
-  }
-  return sections;
-}
-
 function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
@@ -619,32 +601,6 @@ function handleCompileError(error) {
   if (error === null) {
     setURL();
   }
-}
-
-function convertHexToBytes(text) {
-  const array = [];
-  for (let i = 0; i < text.length; i += 2) {
-    const tmpHex = text.substring(i, i + 2);
-    array.push(parseInt(tmpHex, 16));
-  }
-  return array;
-}
-
-function convertBytesToHex(byteArray) {
-  let hex = '';
-  const il = byteArray.length;
-  for (let i = 0; i < il; i++) {
-    if (byteArray[i] < 0) {
-      byteArray[i] = byteArray[i] + 256;
-    }
-    let tmpHex = byteArray[i].toString(16);
-    // add leading zero
-    if (tmpHex.length === 1) {
-      tmpHex = '0' + tmpHex;
-    }
-    hex += tmpHex;
-  }
-  return hex;
 }
 
 function setURL() {
