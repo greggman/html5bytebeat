@@ -325,7 +325,7 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
 
 * `isRunning(): bool`
 
-   true or false if running
+   true or false if running. The node is considered running if it's connected.
 
 * `setExpressions(expressions: string[], resetToZero: bool)`
 
@@ -333,7 +333,7 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
    If 2 expressions it is assumed each expression is for a different channel.
    If a single expression returns an array of
    2 values that is also also assumed to
-   be 2 channels.
+   be 2 channels. Otherwise, it's 1 channel and will be output to both left and right channels.
 
 * `setDesiredSampleRate(rate: number)`
 
@@ -352,7 +352,7 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
     ByteBeatNode.ExpressionType.infix             // sin(t / 50)
     ByteBeatNode.ExpressionType.postfix           // t 50 / sin
     ByteBeatNode.ExpressionType.glitch            // see docs
-    ByteBeatNode.ExpressionType.function          // return sin(t / 50)
+    ByteBeatNode.ExpressionType.function          // return function() { sin(t / 50); }
     ```
 
 * `getExpressionType(): number`
@@ -384,6 +384,7 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
   Gets a -1 to +1 from the current expression for the given time (time is the `t` value in your expression)
 
   This function is useful for visualizers.
+  
   To make a stack call `ByteBeatNode.createStack()`. To create a context call
   `ByteBeatNode.createContext`.
   A stack is used for postfix expressions.
