@@ -227,10 +227,32 @@ export default class ByteBeatCompiler {
     };
   }
 
+  static addGlobals(object, name, filter = () => true) {
+    return `
+        var console = {
+          log() {},
+          info() {},
+          error() {},
+          warn() {},
+        };
+        var ${Object.getOwnPropertyNames(object).filter(filter).map(key => {
+          const value = object[key];
+          return (typeof value === 'function')
+              ? `${key} = ${name}.${key}`
+              : `${key} = ${name}.${key}`;
+        }).join(',\n')};
+    `;
+  }
 
   static s_fnHeader = (function() {
     const keys = {};
-    const filter = () => true;
+    const windowKeep = new Set([
+      'parseInt',
+      'parseFloat',
+      'Array',
+      'isNaN',
+    ]);
+    const filter = n => !windowKeep.has(n);
     //const filter = n => n === 'scroll' || n === 'sin';
     Object.getOwnPropertyNames(globalThis).filter(filter).forEach((key) => {
       keys[key] = true;
@@ -239,28 +261,25 @@ export default class ByteBeatCompiler {
     delete keys['window'];
     return `
         var ${Object.keys(keys).sort().join(',\n')};
-        var ${Object.getOwnPropertyNames(Math).map(key => {
-          const value = Math[key];
-          return (typeof value === 'function')
-              ? `${key} = Math.${key}.bind(Math)`
-              : `${key} = Math.${key}`;
-        }).join(',\n')};
+        ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;
   }());
+
+//         ${ByteBeatCompiler.addGlobals(globalThis, 'globalThis', n => n === 'parseInt' || n === 'parseFloat')}
+
 
   static expressionStringToFn(evalExp, extra, test) {
     // eslint-disable-next-line no-new-func
     const fp = new Function('stack', 'window', 'extra', evalExp);
     let f = fp(undefined, undefined, undefined);
     const ctx = ByteBeatCompiler.makeContext();
-
     const stack = new WrappingStack();
     const tempExtra = Object.assign({}, extra);
     // check function
-    let v = f(0, 0, stack, ctx, tempExtra);
+    let v = f.call(ctx, 0, 0, stack, ctx, tempExtra);
     if (typeof v === 'function') {
       f = f();
-      v = f(0, 0, stack, ctx, tempExtra);
+      v = f.call(ctx, 0, 0, stack, ctx, tempExtra);
     }
     const array = ByteBeatCompiler.is2NumberArray(v);
 
