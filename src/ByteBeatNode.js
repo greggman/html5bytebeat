@@ -47,6 +47,7 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   }
 
   setExpressionsAndResetToZero(data) {
+    this.byteBeat.reset();
     this.byteBeat.setExpressions(data);
     this.byteBeat.reset();
   }
@@ -181,7 +182,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
   reset() {
     this.#callFunc('reset');
     this.byteBeat.reset();
-    this.time = 0;
     this.startTime = performance.now();
     this.pauseTime = this.startTime;
   }
@@ -263,7 +263,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
     });
     this.byteBeat.setExpressions(exp);
     if (resetToZero) {
-      this.byteBeat.reset();
+      this.reset();
     }
     if (this.onCompileCallback) {
       this.onCompileCallback(null);
