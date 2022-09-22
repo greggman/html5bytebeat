@@ -238,35 +238,9 @@ async function main() {
   controls.appendChild(compileStatusElem);
 
   codeElem = $('code');
-  const ignoreKeysSet = new Set([
-    'ArrowUp',
-    'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
-    'AltUp',
-    'AltDown',
-    'AltLeft',
-    'AltRight',
-    'ControlUp',
-    'ControlDown',
-    'ControlLeft',
-    'ControlRight',
-    'MetaUp',
-    'MetaDown',
-    'MetaLeft',
-    'MetaRight',
-    'ShiftUp',
-    'ShiftDown',
-    'ShiftLeft',
-    'ShiftRight',
-  ]);
-  codeElem.addEventListener('keyup', function(event) {
-    if (ignoreKeysSet.has(event.code)) {
-      return;
-    }
-
+  codeElem.addEventListener('input', () => {
     compile(codeElem.value);
-  }, false );
+  });
 
   codeElem.addEventListener('keydown', function(event) {
       if (event.code === 'Tab') {
@@ -520,6 +494,7 @@ async function setExpressions(expressions, resetToZero) {
 }
 
 function compile(text, resetToZero) {
+  console.log('compile: "', text, '"');
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
     const expressions = [sections.default || sections.channel1];
