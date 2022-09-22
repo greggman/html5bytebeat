@@ -75,17 +75,14 @@ function connectFor2Channels() {
 }
 
 function reconnect() {
-  const is2Channels = g_byteBeat.getNumChannels() === 2;
-  if (g_isSplit !== is2Channels) {
-    g_isSplit = is2Channels;
-    const lastNode = connectFor2Channels();
-    if (g_filter) {
-      lastNode.connect(g_filter);
-      g_filter.connect(g_context.destination);
-    } else {
-      lastNode.connect(g_context.destination);
-    }
+  const lastNode = connectFor2Channels();
+  if (g_filter) {
+    lastNode.connect(g_filter);
+    g_filter.connect(g_context.destination);
+  } else {
+    lastNode.connect(g_context.destination);
   }
+  g_context.resume();
 }
 
 function play() {
