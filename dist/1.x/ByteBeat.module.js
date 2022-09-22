@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.6, license MIT */
+/* ByteBeat@1.0.7, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -610,7 +610,7 @@ class ByteBeatProcessor {
       this.buffer0 = new Float32Array(numNeededSrcSamples);
       this.buffer1 = new Float32Array(numNeededSrcSamples);
     }
-    //
+
     const fn0 = this.functions[0].f;
     const fn0Array = this.functions[0].array;
     const fn1 = (this.functions[1] || {}).f;
@@ -634,24 +634,29 @@ class ByteBeatProcessor {
     const sampler = samplerGroup[this.type];
     sampler(buffer0, buffer1, fn0, fn1, startSrcId, divisor, stack0, stack1, ctx0, ctx1, extra, numSrcSampleToGenerate);
 
-    if (dataLength) {
-      let ndx = this.dstSampleCount * this.desiredSampleRate / this.actualSampleRate;
-      const step = this.desiredSampleRate / this.actualSampleRate;
-      const expandFn = this.expandMode ? ByteBeatProcessor.interpolate : ByteBeatProcessor.trunc;
+    let ndx = this.dstSampleCount * this.desiredSampleRate / this.actualSampleRate;
+    const step = this.desiredSampleRate / this.actualSampleRate;
 
-      if (rightData) {
-        for (let i = 0; i < dataLength; ++i) {
-          leftData[i] = expandFn(buffer0, ndx);
-          rightData[i] = expandFn(buffer1, ndx);
-          ndx += step;
-        }
-      } else {
-        let ndx = 0;
-        for (let i = 0; i < dataLength; ++i) {
-          leftData[i * 2] = expandFn(buffer0, ndx);
-          leftData[i * 2 + 1] = expandFn(buffer1, ndx);
-          ndx += step;
-        }
+    // Note: ideally we'd have a better way to resample but if you google
+    // audio resampling you'll see it's a hard problem. If you know a off a
+    // a good efficient algo to insert here please make a pull request or open
+    // an issue. At the moment if expandMode is true then basic linear interpolation
+    // is used. It sounds awful! The default nearest lowest neighbor. In other words
+    // an index of 9.7 will return sample 9, not sample 10.
+    const expandFn = this.expandMode ? ByteBeatProcessor.interpolate : ByteBeatProcessor.trunc;
+
+    if (rightData) {
+      for (let i = 0; i < dataLength; ++i) {
+        leftData[i] = expandFn(buffer0, ndx);
+        rightData[i] = expandFn(buffer1, ndx);
+        ndx += step;
+      }
+    } else {
+      let ndx = 0;
+      for (let i = 0; i < dataLength; ++i) {
+        leftData[i * 2] = expandFn(buffer0, ndx);
+        leftData[i * 2 + 1] = expandFn(buffer1, ndx);
+        ndx += step;
       }
     }
 
@@ -676,33 +681,36 @@ class ByteBeatProcessor {
     }
     */
 
-    // I don't know why this -2 is needed!
-    // If I don't add it I get a glitch
     this.dstSampleCount += dataLength;
   }
 
   getSampleForTime(time, context, stack, channel = 0) {
     const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
     let s = 0;
-    if (this.functions[0].array) {
-      const ss = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
-      s = ss[channel];
-    } else {
-      if (!this.functions[1]) {
-        channel = 0;
+    try {
+      if (this.functions[0].array) {
+        const ss = this.functions[0].f(time / divisor, channel, stack, context, this.extra);
+        s = ss[channel];
+      } else {
+        if (!this.functions[1]) {
+          channel = 0;
+        }
+        s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
       }
-      s = this.functions[channel].f(time / divisor, channel, stack, context, this.extra);
-    }
-    switch (this.type) {
-      case 0:
-        return (s & 255) / 127 - 1;
-      case 1:
-        return s;
-      case 2:
-        int8[0] = s;
-        return int8[0] / 128;
-      default:
-        return 0;
+      switch (this.type) {
+        case 0:
+          return (s & 255) / 127 - 1;
+        case 1:
+          return s;
+        case 2:
+          int8[0] = s;
+          return int8[0] / 128;
+        default:
+          return 0;
+      }
+    } catch (e) {
+      console.error(e);
+      return 0;
     }
   }
 }
@@ -900,18 +908,6 @@ class ByteBeatNode extends AudioWorkletNode {
     return (time - this.startTime) * 0.001 * this.byteBeat.getDesiredSampleRate() | 0;
   }
 
-  setOnCompile(callback) {
-    this.onCompileCallback = callback;
-  }
-
-  recompile() {
-    this.setExpressions(this.getExpressions());
-  }
-
-  setOptions(sections) {
-    this.expandMode = (sections['linear'] !== undefined);
-  }
-
   setExpressions(expressions, resetToZero) {
     const compileExpressions = (expressions, expressionType, extra) => {
       const funcs = [];
@@ -927,20 +923,17 @@ class ByteBeatNode extends AudioWorkletNode {
           }
         }
       } catch (e) {
-        if (this.onCompileCallback) {
-          if (e.stack) {
-            const m = /<anonymous>:1:(\d+)/.exec(e.stack);
-            if (m) {
-              const charNdx = parseInt(m[1]);
-              console.error(e.stack);
-              console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
-            }
-          } else {
-            console.error(e, e.stack);
+        if (e.stack) {
+          const m = /<anonymous>:1:(\d+)/.exec(e.stack);
+          if (m) {
+            const charNdx = parseInt(m[1]);
+            console.error(e.stack);
+            console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
           }
-          this.onCompileCallback(e.toString());
+        } else {
+          console.error(e, e.stack);
         }
-        return null;
+        throw e;
       }
       return funcs;
     };
@@ -969,9 +962,6 @@ class ByteBeatNode extends AudioWorkletNode {
     this.byteBeat.setExpressions(exp);
     if (resetToZero) {
       this.reset();
-    }
-    if (this.onCompileCallback) {
-      this.onCompileCallback(null);
     }
   }
 
