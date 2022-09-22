@@ -14,7 +14,7 @@ async function init() {
   g_byteBeatNode.setType(ByteBeatNode.Type.byteBeat);
   g_byteBeatNode.setExpressionType(ByteBeatNode.ExpressionType.infix);
   g_byteBeatNode.setDesiredSampleRate(8000);
-  g_byteBeatNode.setExpressions(['((t >> 10) & 42) * t']);
+  await g_byteBeatNode.setExpressions(['((t >> 10) & 42) * t']);
 }
 
 async function playPause() {

@@ -327,13 +327,15 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
 
    true or false if running. The node is considered running if it's connected.
 
-* `setExpressions(expressions: string[], resetToZero: bool)`
+* `async setExpressions(expressions: string[], resetToZero: bool)`
 
    Pass in array of 1 or 2 expressions.
    If 2 expressions it is assumed each expression is for a different channel.
    If a single expression returns an array of
    2 values that is also also assumed to
    be 2 channels. Otherwise, it's 1 channel and will be output to both left and right channels.
+
+   Note: this function is async. You can catch expression errors with `try`/`catch`.
 
 * `setDesiredSampleRate(rate: number)`
 

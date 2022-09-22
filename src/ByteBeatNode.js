@@ -195,18 +195,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
     return (time - this.startTime) * 0.001 * this.byteBeat.getDesiredSampleRate() | 0;
   }
 
-  setOnCompile(callback) {
-    this.onCompileCallback = callback;
-  }
-
-  recompile() {
-    this.setExpressions(this.getExpressions());
-  }
-
-  setOptions(sections) {
-    this.expandMode = (sections['linear'] !== undefined);
-  }
-
   setExpressions(expressions, resetToZero) {
     const compileExpressions = (expressions, expressionType, extra) => {
       const funcs = [];
@@ -222,20 +210,17 @@ export default class ByteBeatNode extends AudioWorkletNode {
           }
         }
       } catch (e) {
-        if (this.onCompileCallback) {
-          if (e.stack) {
-            const m = /<anonymous>:1:(\d+)/.exec(e.stack);
-            if (m) {
-              const charNdx = parseInt(m[1]);
-              console.error(e.stack);
-              console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
-            }
-          } else {
-            console.error(e, e.stack);
+        if (e.stack) {
+          const m = /<anonymous>:1:(\d+)/.exec(e.stack);
+          if (m) {
+            const charNdx = parseInt(m[1]);
+            console.error(e.stack);
+            console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
           }
-          this.onCompileCallback(e.toString());
+        } else {
+          console.error(e, e.stack);
         }
-        return null;
+        throw e;
       }
       return funcs;
     };
@@ -264,9 +249,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
     this.byteBeat.setExpressions(exp);
     if (resetToZero) {
       this.reset();
-    }
-    if (this.onCompileCallback) {
-      this.onCompileCallback(null);
     }
   }
 

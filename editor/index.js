@@ -185,7 +185,7 @@ async function main() {
   expressionTypeElem = addSelection(s_expressionTypes, 0);
   expressionTypeElem.addEventListener('change', function(event) {
     g_byteBeat.setExpressionType(event.target.selectedIndex);
-    g_byteBeat.recompile();
+    setExpressions(g_byteBeat.getExpressions());
   }, false);
   controls.appendChild(expressionTypeElem);
 
@@ -300,8 +300,6 @@ async function main() {
     const hash = window.location.hash.substr(1);
     readURL(hash);
   });
-
-  g_byteBeat.setOnCompile(handleCompileError);
 
   if (window.location.hash) {
     const hash = window.location.hash.substr(1);
@@ -499,6 +497,21 @@ function updateTimeDisplay() {
   timeElem.innerHTML = g_byteBeat.getTime();
 }
 
+async function setExpressions(expressions, resetToZero) {
+  let error;
+  try {
+    await g_byteBeat.setExpressions(expressions, resetToZero);
+  } catch (e) {
+    error = e;
+  }
+
+  compileStatusElem.textContent = error ? error : '*';
+  compileStatusElem.classList.toggle('error', error);
+  if (!error) {
+    setURL();
+  }
+}
+
 function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
@@ -509,16 +522,8 @@ function compile(text, resetToZero) {
     if (resetToZero) {
       g_visualizer.reset();
     }
-    g_byteBeat.setExpressions(expressions, resetToZero);
-  }
-  g_byteBeat.setOptions(sections);
-}
 
-function handleCompileError(error) {
-  compileStatusElem.textContent = error ? error : '*';
-  compileStatusElem.classList.toggle('error', error);
-  if (error === null) {
-    setURL();
+    setExpressions(expressions, resetToZero);
   }
 }
 
