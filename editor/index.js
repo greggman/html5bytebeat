@@ -9,6 +9,7 @@ import songList from './songList.js';
 import {
   convertBytesToHex,
   convertHexToBytes,
+  makeExposedPromise,
   splitBySections,
   s_beatTypes,
   s_expressionTypes,
@@ -31,6 +32,7 @@ let g_merger;
 let g_isSplit;
 let g_visualizers;
 let g_visualizer;
+let g_captureFn;
 let g_screenshot;
 let g_saving = false;
 let g_saveDialogInitialized = false;
@@ -320,6 +322,9 @@ async function main() {
     if (playing) {
       updateTimeDisplay();
       g_visualizer.render(g_byteBeat, g_analyzers);
+      if (g_captureFn) {
+        g_captureFn();
+      }
     }
   }
   render();
@@ -400,13 +405,11 @@ function captureScreenshot(ctx, canvas, text) {
 function startSave() {
   if (!g_saving) {
     g_saving = true;
-    const firstLine = strip(strip(codeElem.value.split('\n')[0]).replace(/^\/\//, ''));
-    g_screenshot = captureScreenshot(g_screenshotContext, canvas, firstLine);
     showSaveDialog();
   }
 }
 
-function showSaveDialog() {
+async function showSaveDialog() {
   function closeSave() {
     $('savedialog').style.display = 'none';
     window.removeEventListener('keypress', handleKeyPress);
@@ -442,7 +445,7 @@ function showSaveDialog() {
       if (numSeconds > 0) {
         const wasPlaying = playing;
         if (playing) {
-          g_byteBeat.pause();
+          pause();
         }
         // there are issues where. The stack should be
         // reset if nothing else.
@@ -471,13 +474,21 @@ function showSaveDialog() {
         const blob = wavMaker.getWavBlob();
         saveData(blob, 'html5bytebeat.wav');
         if (wasPlaying) {
-          g_byteBeat.play();
+          play();
         }
       }
       closeSave();
     }
     realSave();
   }
+
+  const firstLine = strip(strip(codeElem.value.split('\n')[0]).replace(/^\/\//, ''));
+  const p = makeExposedPromise();
+  g_captureFn = () => {
+    g_captureFn = undefined;
+    p.resolve(captureScreenshot(g_screenshotContext, canvas, firstLine));
+  };
+  g_screenshot = await p.promise;
 
   window.addEventListener('keypress', handleKeyPress);
   if (!g_saveDialogInitialized) {

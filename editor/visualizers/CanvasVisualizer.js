@@ -45,7 +45,6 @@ export default class CanvasVisualizer extends Visualizer {
       length -= max;
     }
     this.position = p;
-    this.handleCapture();
   }
 
   render() {

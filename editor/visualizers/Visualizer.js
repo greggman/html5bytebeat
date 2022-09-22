@@ -4,22 +4,6 @@ export default class Visualizer {
     this.type = 1;
   }
 
-  setOnCompile(callback) {
-    this.onCompileCallback = callback;
-  }
-
-  capture(callback) {
-    this.captureCallback = callback;
-  }
-
-  handleCapture() {
-    const fn = this.captureCallback;
-    if (fn) {
-      this.captureCallback = undefined;
-      fn(this.canvas);
-    }
-  }
-
   // called when the window resizes
   resize(/*width, height*/) {
     // extend and override

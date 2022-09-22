@@ -70,8 +70,6 @@ export default class WaveVisualizer extends Visualizer {
     for (const effect of this.effects) {
       effect.render(gl, this.commonUniforms, byteBeat, analyzers);
     }
-
-    this.handleCapture();
   }
 }
 
