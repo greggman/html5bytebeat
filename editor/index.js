@@ -29,7 +29,6 @@ let g_filter;
 const g_analyzers = [];
 let g_splitter;
 let g_merger;
-let g_isSplit;
 let g_visualizers;
 let g_visualizer;
 let g_captureFn;
