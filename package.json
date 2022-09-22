@@ -8,6 +8,7 @@
     "check-ci": "npm run eslint",
     "eslint": "eslint src/**/*.js editor/**/*.js",
     "pre-push": "npm run eslint",
+    "test": "exit 0", 
     "update-songs": "node build/update-songs.js"
   },
   "files": [
