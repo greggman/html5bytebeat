@@ -6,14 +6,36 @@ const colorDarkYellow = [0.7, 0.7, 0, 1];
 
 export default class FFTEffect {
   constructor(gl) {
+    if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) < 1) {
+      console.warn('vertex texture units not supported');
+      const noop = _ => _;
+      this.reset = noop;
+      this.resize = noop;
+      this.render = noop;
+      return;
+    }
     this.programInfo = twgl.createProgramInfo(gl, [
         `
           attribute float column;
-          attribute float height;
+          uniform sampler2D heightTex;
+          uniform float heightTexWidth;
           uniform float position;
           uniform vec2 offset;
+          uniform vec2 resolution;
           void main() {
-            gl_Position = vec4(mod(column - position, 1.0) * 2.0 - 1.0, height, 0, 1) + vec4(offset, 0, 0);
+            float width = resolution[0];
+            float height = resolution[1];
+
+            float oneVerticalPixel = 2.0 / height;
+            float oneHorizontalTexel = 1.0 / heightTexWidth;
+
+            float odd = mod(column, 2.0);
+
+            float c = floor(column / 2.0) / width;
+            float u = c + oneHorizontalTexel * odd;
+            float h = texture2D(heightTex, vec2(u, 0.5)).r * 2.0 - 1.0
+               + oneVerticalPixel * odd;
+            gl_Position = vec4(c * 2.0 - 1.0, h, 0, 1) + vec4(offset, 0, 0);
           }
         `,
         `
@@ -24,68 +46,67 @@ export default class FFTEffect {
           }
         `,
     ]);
+
+    this.heightTex = twgl.createTexture(gl, {
+      format: gl.LUMINANCE,
+      src: [0],
+      minMag: gl.NEAREST,
+      wrap: gl.CLAMP_TO_EDGE,
+    });
+
     this.uniforms = {
+      heightTex: this.heightTex,
+      heightTexWidth: 0,
       position: 0,
+      resolution: [0, 0],
       offset: [0, 0],
       color: new Float32Array([0, 0.5, 0.5, 1]),
     };
   }
-  reset(gl) {
-    this.lineHeight.fill(0);
-    twgl.setAttribInfoBufferFromArray(gl, this.bufferInfo.attribs.height, this.lineHeight);
+  reset(/*gl*/) {
   }
   resize(gl) {
     const width = gl.drawingBufferWidth;
-    const lineHeight = new Float32Array(width * 2);
+    const height = gl.drawingBufferHeight;
     const column = new Float32Array(width * 2);
 
     this.width = width;
     this.position = 0;
+    this.uniforms.resolution[0] = width;
+    this.uniforms.resolution[1] = height;
 
-    this.oneVerticalPixel = 2 / gl.drawingBufferHeight;
+    this.maxWidth = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
-    for (let ii = 0; ii < width * 2; ++ii) {
-      lineHeight[ii] = Math.sin(ii / width * Math.PI * 2);
-      column[ii] = (ii >> 1) / width;
+    for (let ii = 0; ii < column.length; ++ii) {
+      column[ii] = ii;
     }
-    this.lineHeight = lineHeight;
     const arrays = {
-      height: { numComponents: 1, data: lineHeight, },
       column: { numComponents: 1, data: column, },
     };
 
     if (!this.bufferInfo) {
       this.bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
     } else {
-      twgl.setAttribInfoBufferFromArray(gl, this.bufferInfo.attribs.height, arrays.height);
       twgl.setAttribInfoBufferFromArray(gl, this.bufferInfo.attribs.column, arrays.column);
       this.bufferInfo.numElements = width * 2;
     }
   }
   render(gl, commonUniforms, byteBeat, analyzers) {
-    this.data = this.data || new Uint8Array(analyzers[0].frequencyBinCount);
+    if (!this.data) {
+      this.data = new Uint8Array(analyzers[0].frequencyBinCount);
+    }
     const data = this.data;
     const numChannels = byteBeat.getNumChannels();
     for (let ch = 0; ch < numChannels; ++ch) {
       analyzers[ch].getByteFrequencyData(data);
-      const dst = this.lineHeight;
-      const v = this.oneVerticalPixel;
-      const v2 = v * 2;
-      let h1 = data[0] / 128 - 1;
-      for (let i = 0; i < dst.length; i += 2) {
-        const ndx = i * data.length / dst.length | 0;
-        const h2 = data[ndx] / 128 - 1;
-        const dy = h1 - h2;
-        dst[i] = h1;
-        dst[i + 1] = (Math.abs(dy) > v ? h2 : (h2 + (dy > 0 ? v2 : -v2)));
-        h1 = h2;
-      }
+      gl.bindTexture(gl.TEXTURE_2D, this.heightTex);
+      const texWidth = Math.min(this.maxWidth, data.length);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, texWidth, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
 
       const {uniforms, programInfo, bufferInfo} = this;
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.lineHeight);
-
+      uniforms.width = this.width;
+      uniforms.heightTexWidth = texWidth;
       uniforms.position = this.position / this.width;
       //uniforms.offset[0] = ch / gl.drawingBufferWidth;
       uniforms.color = ch ? colorDarkYellow : colorDarkCyan;
