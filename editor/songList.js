@@ -13,14 +13,42 @@ function valueOrDefault(v, defaultV) {
   return v === undefined ? defaultV : v;
 }
 
-function score({user, reactions, groupSize}) {
-  const thePTB = 234804;
+const thePTB = 234804;
+function score({user, reactions, groupSize/*, link*/}) {
+  //const lenHack = 10000000;
   return (user.id === thePTB ? 1000000 : 0) +
       (reactions['+1'] +
        reactions['laugh'] +
        reactions['heart'] +
        reactions['hooray'] -
-       reactions['-1']) / groupSize;
+       reactions['-1']) / groupSize +
+       //lenHack / link.length / lenHack +
+       0;
+}
+
+/*
+const reactionMap = new Map([
+  ['+1', '👍'],
+  ['laugh', '🤣'],
+  ['heart', '❤️'],
+  ['hooray', '🎉'],
+]);
+function makeReactions(reactions, groupSize, user) {
+  const scores = [];
+  for (const [reaction, count] of Object.entries(reactions)) {
+    const emoji = reactionMap.get(reaction);
+    if (emoji) {
+      const score = user === thePTB ? count : count / groupSize;
+      if (score >= 1) {
+        scores.push(`${emoji}(${score | 0})`);
+      }
+    }
+  }
+  return scores.join('');
+}
+*/
+function makeReactions() {
+  return '';
 }
 
 export default async function loadSongs() {
@@ -42,7 +70,7 @@ export default async function loadSongs() {
     });
 
     const categories = {};
-    for (const {title, link} of sortedSongs) {
+    for (const {title, link, reactions, groupSize, user} of sortedSongs) {
       const url = new URL(link);
       const q = Object.fromEntries(new URLSearchParams(url.hash.substring(1)).entries());
       const type = typeParamToTypeName(valueOrDefault(q.t, 1));
@@ -52,7 +80,8 @@ export default async function loadSongs() {
       categories[type] = subCategory;
       const subSongs = subCategory[expressionType] || [];
       subCategory[expressionType] = subSongs;
-      subSongs.push({title, link, sampleRate});
+      const reaction = makeReactions(reactions, groupSize, user);
+      subSongs.push({title: `${reaction}${title}`, link, sampleRate});
     }
 
     for (const [category, subCategories] of Object.entries(categories)) {
