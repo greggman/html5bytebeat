@@ -5,7 +5,9 @@
   "module": "src/ByteBeatNode.js",
   "scripts": {
     "build": "rollup -c",
+    "check-ci": "npm run eslint",
     "eslint": "eslint src/**/*.js editor/**/*.js",
+    "pre-push": "npm run eslint",
     "update-songs": "node build/update-songs.js"
   },
   "files": [

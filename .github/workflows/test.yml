@@ -1,0 +1,24 @@
+name: Test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🍔🍟🥤
+        uses: actions/checkout@v3.0.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 😂
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Test 🧪
+        run: |
+          npm ci
+          npm run check-ci
