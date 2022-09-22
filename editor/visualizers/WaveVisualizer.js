@@ -1,5 +1,6 @@
 import DataEffect from './effects/DataEffect.js';
 import FFTEffect from './effects/FFTEffect.js';
+import GraphEffect from './effects/GraphEffect.js';
 import SampleEffect from './effects/SampleEffect.js';
 import WaveEffect from './effects/WaveEffect.js';
 import Visualizer from './Visualizer.js';
@@ -26,6 +27,7 @@ export default class WaveVisualizer extends Visualizer {
       ...(showSample ? [new SampleEffect(gl)] : []),
       new WaveEffect(gl),
       new FFTEffect(gl),
+      new GraphEffect(gl),
     ];
 
     this.resize(512, 512);
