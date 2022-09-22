@@ -84,6 +84,7 @@ export default async function loadSongs() {
       subSongs.push({title: `${reaction}${title}`, link, sampleRate});
     }
 
+    let count = 0;
     for (const [category, subCategories] of Object.entries(categories)) {
       const details = el('details', {className: 'category', open: true}, [
           el('summary', {textContent: category}),
@@ -91,7 +92,13 @@ export default async function loadSongs() {
             el('details', {className: 'sub-category', open: true}, [
               el('summary', {textContent: subCategory}),
               el('div', {}, songs.map(({title, link, sampleRate}) => {
-                return el('a', {href: link.replace(origBase, localBase), textContent: `${title} (${sampleRate})`, onClick: highlightLink});
+                ++count;
+                return el('a', {
+                  ...((count & 1) === 0 && {className: 'odd'}),
+                  href: link.replace(origBase, localBase),
+                  textContent: `${title} (${sampleRate})`,
+                  onClick: highlightLink,
+                });
               })),
             ]),
           )),
@@ -111,13 +118,14 @@ export default async function loadSongs() {
       const str = searchElem.value.toLowerCase();
       const links = songsElem.querySelectorAll('a');
 
-      links.forEach(function(link){
+      links.forEach(function(link, ndx){
         const text = link.textContent.toLowerCase();
         if (str.length && !text.includes(str)) {
           link.classList.add('hide');
         } else {
           link.classList.remove('hide');
         }
+        link.classList.toggle('odd', ndx & 1);
       });
     }
 
