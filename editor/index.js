@@ -1,5 +1,6 @@
 /* global LZMA */
 /* global WavMaker */
+import '../js/scrollbars.js';
 import ByteBeatNode from '../src/ByteBeatNode.js';
 import WaveVisualizer from './visualizers/WaveVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
@@ -494,7 +495,6 @@ async function setExpressions(expressions, resetToZero) {
 }
 
 function compile(text, resetToZero) {
-  console.log('compile: "', text, '"');
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
     const expressions = [sections.default || sections.channel1];

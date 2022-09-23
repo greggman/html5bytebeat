@@ -51,6 +51,7 @@
   <meta name="twitter:image:src" content="https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.png">
 
   <link href="icon.png" rel="shortcut icon" type="image/png">
+  <link href="js/scrollbars.css" rel="stylesheet">
 
   <title>HTML5 Bytebeat</title>
 <script src="js/lzma.js"></script>
@@ -312,13 +313,13 @@ input {
     </div>
     <div id="foreground">
       <div id="controls"></div>
-      <textarea id="code"></textarea>
+      <textarea id="code" class="layout-scrollbar"></textarea>
       <pre id="debug" style="display: none;"></pre>
     </div>
   </div>
   <div style="display: none;" id="songs">
       <input id="search" type="text" placeholder="Search" autocomplete="off" />
-      <div id="song-list"></div>
+      <div id="song-list" class="layout-scrollbar"></div>
   </div>
 </div>
 <button id="showSongs"> ▶ beats</button>

@@ -1,0 +1,61 @@
+/* Variables */
+:root {
+  --scrollbar-size: .375rem;
+  --scrollbar-minlength: 1.5rem; /* Minimum length of scrollbar thumb (width of horizontal, height of vertical) */
+  --scrollbar-ff-width: thin; /* FF-only accepts auto, thin, none */
+  --scrollbar-track-color: transparent;
+  --scrollbar-color: rgba(0,0,0,.2);
+  --scrollbar-color-hover: rgba(0,0,0,.3);
+  --scrollbar-color-active: rgb(0,0,0);
+}
+
+/* Use .layout-scrollbar-obtrusive to only use overflow if scrollbars don’t overlay */
+.scrollbar-test,
+.layout-cell {
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+  scrollbar-width: var(--scrollbar-ff-width);
+}
+
+/* This class controls what elements have the new fancy scrollbar CSS */
+.layout-scrollbar {
+  scrollbar-color: var(--scrollbar-color) var(--scrollbar-track-color);
+}
+/* Only apply height/width to ::-webkit-scrollbar if is obtrusive */
+.layout-scrollbar-obtrusive .layout-scrollbar::-webkit-scrollbar {
+  height: var(--scrollbar-size);
+  width: var(--scrollbar-size);
+}
+.layout-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track-color);
+}
+.layout-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-color);
+  border-radius: 3px;
+}
+.layout-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-color-hover);
+}
+.layout-scrollbar::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-color-active);
+}
+.scrollbar-test::-webkit-scrollbar-thumb:vertical,
+.layout-scrollbar::-webkit-scrollbar-thumb:vertical {
+  min-height: var(--scrollbar-minlength);
+}
+.scrollbar-test::-webkit-scrollbar-thumb:horizontal,
+.layout-scrollbar::-webkit-scrollbar-thumb:horizontal {
+  min-width: var(--scrollbar-minlength);
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --scrollbar-color:#555;
+    --scrollbar-color-hover: #555;
+    --scrollbar-color-active: #555;
+  }
+}
+
