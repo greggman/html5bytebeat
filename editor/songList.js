@@ -13,7 +13,7 @@ function valueOrDefault(v, defaultV) {
   return v === undefined ? defaultV : v;
 }
 
-const thePTB = 234804;
+const thePTB = -1;//234804;
 function score({user, reactions, groupSize/*, link*/}) {
   //const lenHack = 10000000;
   return (user.id === thePTB ? 1000000 : 0) +
@@ -56,6 +56,7 @@ export default async function loadSongs() {
   try {
     //const url = 'editor/songs.json';
     const url = 'https://greggman.github.io/html5bytebeat/editor/songs.json';
+
     const res = await fetch(url);
     const songs = await res.json();
     const localBase = `${window.location.origin}${window.location.pathname}`;
@@ -84,6 +85,7 @@ export default async function loadSongs() {
       subSongs.push({title: `${reaction}${title}`, link, sampleRate});
     }
 
+    const currentHref = window.location.href.replace(origBase, localBase);
     let count = 0;
     for (const [category, subCategories] of Object.entries(categories)) {
       const details = el('details', {className: 'category', open: true}, [
@@ -93,17 +95,28 @@ export default async function loadSongs() {
               el('summary', {textContent: subCategory}),
               el('div', {}, songs.map(({title, link, sampleRate}) => {
                 ++count;
+                const href = link.replace(origBase, localBase);
                 return el('a', {
                   ...((count & 1) === 0 && {className: 'odd'}),
-                  href: link.replace(origBase, localBase),
+                  href,
                   textContent: `${title} (${sampleRate})`,
                   onClick: highlightLink,
+                  ...(href === currentHref && {classList: 'highlight'}),
                 });
               })),
             ]),
           )),
       ]);
       songListElem.appendChild(details);
+      const elem = document.querySelector('.highlight');
+      if (elem) {
+        // If a match was found scroll it into view in the song list
+        // We have to make the song list visible for scrollInfoView to
+        // work.
+        songsElem.style.display = '';
+        elem.scrollIntoView();
+        songsElem.style.display = 'none';
+      }
     }
 
     function highlightLink() {
