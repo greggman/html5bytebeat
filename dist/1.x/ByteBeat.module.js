@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.7, license MIT */
+/* ByteBeat@1.0.8, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -428,8 +428,8 @@ class ByteBeatProcessor {
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
           const s = fn0.call(ctx0, (time / divisor), undefined, stack0, ctx0, extra);
-          buffer0[time % buffer0.length] = s[0];
-          buffer1[time % buffer1.length] = s[1];
+          buffer0[time % buffer0.length] = Number.isNaN(s[0]) ? 0 : s[0];
+          buffer1[time % buffer1.length] = Number.isNaN(s[1]) ? 0 : s[1];
           ++time;
         }
       },
@@ -457,8 +457,10 @@ class ByteBeatProcessor {
       // case 1:  // floatbeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
-          buffer1[time % buffer1.length] = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
+          const s0 = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[time % buffer0.length] = Number.isNaN(s0) ? 0 : s0;
+          const s1 = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
+          buffer1[time % buffer1.length] = Number.isNaN(s1) ? 0 : s1;
         }
       },
       // case 2:  // signed bytebeat
@@ -483,7 +485,8 @@ class ByteBeatProcessor {
       // case 1: // floatbeat
       function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
         for (let i = 0; i < lastSample; ++i) {
-          buffer0[time % buffer0.length] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+          const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+          buffer0[time % buffer0.length] = Number.isNaN(s) ? 0 : s;
           ++time;
         }
       },
