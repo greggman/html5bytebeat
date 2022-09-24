@@ -2,6 +2,7 @@
 const { Octokit } = require('octokit');
 const fs = require('fs');
 const path = require('path');
+const lzma = require('lzma');
 
 async function getComments() {
   if (process.argv[2]) {
@@ -38,6 +39,42 @@ async function getComments() {
   return comments;
 }
 
+function convertHexToBytes(text) {
+  const array = [];
+  for (let i = 0; i < text.length; i += 2) {
+    const tmpHex = text.substring(i, i + 2);
+    array.push(parseInt(tmpHex, 16));
+  }
+  return array;
+}
+
+function readURL(hash) {
+  const args = hash.split('&');
+  const data = {};
+  for (let i = 0; i < args.length; ++i) {
+    const parts = args[i].split('=');
+    data[parts[0]] = parts[1];
+  }
+  const t = data.t !== undefined ? parseFloat(data.t) : 1;
+  const e = data.e !== undefined ? parseFloat(data.e) : 0;
+  const s = data.s !== undefined ? parseFloat(data.s) : 8000;
+  const bytes = convertHexToBytes(data.bb);
+  const code = lzma.decompress(bytes);
+  return {t, e, s, code};
+}
+
+function removeCommentsAndLineBreaks(x) {
+  // remove comments (hacky)
+  x = x.replace(/\/\/.*/g, ' ');
+  x = x.replace(/\n/g, ' ');
+  x = x.replace(/\/\*.*?\*\//g, ' ');
+  return x;
+}
+
+function minimize(code) {
+  return removeCommentsAndLineBreaks(code).trim().replace(/\s\s+/g, ' ');
+}
+
 async function main() {
   const comments = await getComments();
 
@@ -47,13 +84,16 @@ async function main() {
     const results = [...body.matchAll(linkRE)];
     const {login, id} = user;
     songs.push(...results.map(([, title, link]) => {
-      return {title, link, reactions, groupSize: results.length, user: {login, id}};
+      const {code} = readURL(link.substring(link.indexOf('#') + 1));
+      const size = minimize(code).length;
+      return {title, size, link, reactions, groupSize: results.length, user: {login, id}};
     }));
   }
 
   const filename = path.join(__dirname, '..', 'editor', 'songs.json');
   console.log(`writing ${songs.length} song to ${filename}`);
-  fs.writeFileSync(filename, JSON.stringify(songs));
+  const extraArgs = process.argv[2] ? [null, 2] : [];
+  fs.writeFileSync(filename, JSON.stringify(songs, ...extraArgs));
 }
 
 main();
