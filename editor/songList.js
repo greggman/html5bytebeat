@@ -70,8 +70,21 @@ export default async function loadSongs() {
       return Math.sign(scoreB - scoreA);
     });
 
+    const sizeToBin = size => {
+      if (size < 256) {
+        return 0;
+      } else if (size < 1024) {
+        return 1;
+      } else {
+        return 2;
+      }
+    };
+
+    const sizeBinLabels = ['small(≤256b)', 'medium(≤1k)', 'large(>1k)'];
+    const sizeBinToString = bin => sizeBinLabels[bin];
+
     const categories = {};
-    for (const {title, link, reactions, groupSize, user} of sortedSongs) {
+    for (const {title, size, link, reactions, groupSize, user} of sortedSongs) {
       const url = new URL(link);
       const q = Object.fromEntries(new URLSearchParams(url.hash.substring(1)).entries());
       const type = typeParamToTypeName(valueOrDefault(q.t, 1));
@@ -81,8 +94,11 @@ export default async function loadSongs() {
       categories[type] = subCategory;
       const subSongs = subCategory[expressionType] || [];
       subCategory[expressionType] = subSongs;
+      const bin = sizeToBin(size);
+      const sizeBin = subSongs[bin] || [];
+      subSongs[bin] = sizeBin;
       const reaction = makeReactions(reactions, groupSize, user);
-      subSongs.push({title: `${reaction}${title}`, link, sampleRate});
+      sizeBin.push({title: `${reaction}${title}`, link, sampleRate});
     }
 
     const currentHref = window.location.href.replace(origBase, localBase);
@@ -90,20 +106,25 @@ export default async function loadSongs() {
     for (const [category, subCategories] of Object.entries(categories)) {
       const details = el('details', {className: 'category', open: true}, [
           el('summary', {textContent: category}),
-          el('div', {}, [...Object.entries(subCategories)].map(([subCategory, songs]) =>
+          el('div', {}, [...Object.entries(subCategories)].map(([subCategory, sizeBins]) =>
             el('details', {className: 'sub-category', open: true}, [
               el('summary', {textContent: subCategory}),
-              el('div', {}, songs.map(({title, link, sampleRate}) => {
-                ++count;
-                const href = link.replace(origBase, localBase);
-                return el('a', {
-                  ...((count & 1) === 0 && {className: 'odd'}),
-                  href,
-                  textContent: `${title} (${sampleRate})`,
-                  onClick: highlightLink,
-                  ...(href === currentHref && {classList: 'highlight'}),
-                });
-              })),
+              el('div', {}, sizeBins.filter(b => !!b).map((songs, bin) =>
+                el('details', {className: 'size-bin', open: true}, [
+                  el('summary', {textContent: sizeBinToString(bin)}),
+                  el('div', {}, songs.map(({title, link, sampleRate}) => {
+                    ++count;
+                    const href = link.replace(origBase, localBase);
+                    return el('a', {
+                      ...((count & 1) === 0 && {className: 'odd'}),
+                      href,
+                      textContent: `${title} (${sampleRate})`,
+                      onClick: highlightLink,
+                      ...(href === currentHref && {classList: 'highlight'}),
+                    });
+                  })),
+                ])
+              )),
             ]),
           )),
       ]);
