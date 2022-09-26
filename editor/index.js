@@ -1,7 +1,7 @@
 /* global LZMA */
 /* global WavMaker */
 import '../js/scrollbars.js';
-import * as twgl from '../../../js/twgl-full.module.js';
+import * as twgl from '../js/twgl-full.module.js';
 
 import ByteBeatNode from '../src/ByteBeatNode.js';
 import WebGLVisualizer from './visualizers/WebGLVisualizer.js';

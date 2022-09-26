@@ -1,5 +1,4 @@
 
-import 'https://greggman.github.io/webgl-lint/webgl-lint.js';
 import * as twgl from '../../../js/twgl-full.module.js';
 
 const m4 = twgl.m4;
