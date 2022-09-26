@@ -281,8 +281,10 @@ async function main() {
     readURL('t=0&e=0&s=8000&bb=5d000001001400000000000000001461cc403ebd1b3df4f78ee66fe76abfec87b7777fd27ffff85bd000');
   }
 
-  onWindowResize();
-  window.addEventListener('resize', onWindowResize, false);
+  {
+    const observer = new ResizeObserver(onWindowResize);
+    observer.observe(canvas);
+  }
   playPause();
 
   function render() {
