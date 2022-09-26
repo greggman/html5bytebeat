@@ -64,9 +64,9 @@ async function main() {
     try {
       const sections = splitBySections(text);
       if (sections.default || sections.channel1) {
-        const expressions = [sections.default || sections.channel1];
+        const expressions = [sections.default?.body || sections.channel1?.body];
         if (sections.channel2) {
-          expressions.push(sections.channel2);
+          expressions.push(sections.channel2.body);
         }
         compileExpressions(expressions, e);
       }

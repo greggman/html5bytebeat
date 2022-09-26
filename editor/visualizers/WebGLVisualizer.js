@@ -1,18 +1,8 @@
-import DataEffect from './effects/DataEffect.js';
-import FFTEffect from './effects/FFTEffect.js';
-import SampleEffect from './effects/SampleEffect.js';
-import WaveEffect from './effects/WaveEffect.js';
 import Visualizer from './Visualizer.js';
 
-export default class WaveVisualizer extends Visualizer {
-  constructor(canvas, showSample) {
-    super(canvas);
-    this.showSample = showSample;
-    const gl = canvas.getContext('webgl', {
-      alpha: false,
-      antialias: false,
-      preserveDrawingBuffer: true,
-    });
+export default class WebGLVisualizer extends Visualizer {
+  constructor(gl, effects) {
+    super(gl.canvas);
     this.gl = gl;
     this.temp = new Float32Array(1);
     this.resolution = new Float32Array(2);
@@ -21,13 +11,7 @@ export default class WaveVisualizer extends Visualizer {
       resolution: this.resolution,
     };
 
-    this.effects = [
-      new DataEffect(gl),
-      ...(showSample ? [new SampleEffect(gl)] : []),
-      new WaveEffect(gl),
-      new FFTEffect(gl),
-    ];
-
+    this.effects = effects;
     this.resize(512, 512);
   }
 

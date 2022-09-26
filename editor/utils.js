@@ -36,8 +36,17 @@ export function convertBytesToHex(byteArray) {
 
 // Splits a string, looking for //:name
 const g_splitRE = new RegExp(/\/\/:([a-zA-Z0-9_-]+)(.*)/);
+const g_headerRE = new RegExp(/^\/\/ ([a-zA-Z0-9_-]+): (\S.*?)$/gm);
+
 export function splitBySections(str) {
   const sections = {};
+
+  {
+    const matches = str.matchAll(g_headerRE);
+    for (const m of matches) {
+      sections[m[1]] = { argString: m[2].trim(), body: '' };
+    }
+  }
 
   function getNextSection(str) {
     const pos = str.search(g_splitRE);
@@ -47,12 +56,17 @@ export function splitBySections(str) {
     const m = str.match(g_splitRE);
     const sectionName = m[1];
     const newStr = getNextSection(str.substring(pos + 3 + sectionName.length));
-    sections[sectionName] = newStr;
+    sections[sectionName] = {
+      argString: m[2].trim(),
+      body: newStr,
+    };
     return str.substring(0, pos);
   }
   str = getNextSection(str);
   if (str.length) {
-    sections.default = str;
+    sections.default = {
+      body: str,
+    };
   }
   return sections;
 }

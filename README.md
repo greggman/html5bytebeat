@@ -216,6 +216,14 @@ The orientation of a device may be available as `tiltX` and `tiltY`.
 
 Also note, using the comma operator you can write fairly arbitrary code. [See this example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=1&e=0&s=22000&bb=5d0000010058010000000000000017e07ce86fbd1ca9dedaaaf283d5ff76502fd7dadb76e5d882697d441ca3af61153f2f1380cbf89731ae302303c50ef1ebed677ad146c1f124dcf3cc109dd31ddd363d9d15d0d6a631f5f755297df9d98d614a051e4ed8cad8dae98b3b60d98a87f3ef147227e075cf005fc063cb9e4afe0ef1418c10607d6e7748e5c4477a20901c00ef5379b618214e7e2a2c8a538fec32de37b565c288aa49e52f2bcae7c1c9c474fcf1eb149f734180cccc153d360cb13e758ccf5d1eb9bebee221421a05b2a991f07c0b2ee2ed8ffa2ff5fc).
 
+Putting a comment in form of 
+
+```
+// vsa: <url>
+```
+
+Will apply a [vertexshaderart](https://vertexshaderart.com) piece. [Example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=0&e=0&s=8000&bb=5d00000100b9000000000000000017e07c86411ba2a517dacbc183b1477d3c17bd909f859f6ac588a82b934d189a40e82441616f52b3c7192116ea6be66102b438fc3d5e7ca2be7e768c34a949ce70e384f65243670976039bc9ed417d3b4d307c7506468aa5a052be90c656f55857c76626ba542034fe7d4cc6b435dee121ec730c2b0ebd730287a180702ee24e5cfb642a79cf1835917ef095b197cc235e5bee9e023e0f55f263acd5d95412fff91dde60)
+
 Rant
 ----
 
@@ -227,7 +235,7 @@ A few obvious additions, at least to me, were floatbeat, because the Web Audio A
 takes floats and IIRC some original C based thing that took a function expected floats.
 In fact I wrote that first. I just fed an expression that returns floats
 into the Web Audio API. I then manually converted a few beatbyte expressions by just
-putting `(original-bytebeat-exprssion) / 127 - 1`.
+putting `(original-bytebeat-expression) / 127 - 1`.
 
 The reason I didn't just stick with floatbeat is bytebeat expressions already
 existed and wanted people to be able to use them without having to understand
@@ -239,8 +247,9 @@ end of your expression. The entire point of bytebeat is to be self sufficient,
 to put what you need in the expression itself.
 
 I then found a `funcbeat` in which instead of an expression you pass it a
-function body. AFAICT the advantage is you can write actual code and declare
-other functions and data. For example:
+function body. AFAICT the advantage is you can write code and declare
+other functions and data vs having to squeeze everything into an expression with
+commas. For example:
 
 ```js
 const notes = [261.62, 329.628, 391.995, 523.25, 391.995, 329.628, 261.62, 261.62, 1, 1];
@@ -258,7 +267,7 @@ return function(t) {
 
 But again, What is the point? If you're going to write real code with no limits
 then why do it this way all? [Just write code](https://jsgist.org/?src=5c0429e50839b546a38ce9dbb66c2ab3),
-no need to try to cram it into a bytebeat player.
+no need to try to cram it into a bytebeat player?
 
 Then I found that some people had added a time divisor. For example, instead of
 `t` counting in samples it can count in seconds (fractional values). But again,
@@ -284,6 +293,7 @@ Special thanks to:
 * Mr.Doob for his [GLSL Sandbox](http://mrdoob.com/projects/glsl_sandbox/) where much of this code was cribbed.
 * Nathan Rugg for his [LZMA-JS library](https://github.com/nmrugg/LZMA-JS).
 * Darius Bacon for his [bytebeat program](https://github.com/darius/bytebeat) and for tips and examples to test it.
+* All the people making awesome bytebeats!
 
 # Library
 

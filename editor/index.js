@@ -1,10 +1,19 @@
 /* global LZMA */
 /* global WavMaker */
 import '../js/scrollbars.js';
+import * as twgl from '../../../js/twgl-full.module.js';
+
 import ByteBeatNode from '../src/ByteBeatNode.js';
-import WaveVisualizer from './visualizers/WaveVisualizer.js';
+import WebGLVisualizer from './visualizers/WebGLVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
+
+import DataEffect from './visualizers/effects/DataEffect.js';
+import FFTEffect from './visualizers/effects/FFTEffect.js';
+//import SampleEffect from './visualizers/effects/SampleEffect.js';
+import VSAEffect from './visualizers/effects/VSAEffect.js';
+import WaveEffect from './visualizers/effects/WaveEffect.js';
+
 import songList from './songList.js';
 
 import {
@@ -40,6 +49,9 @@ let g_screenshotCanvas;
 let g_screenshotContext;
 let g_debugElem;
 let g_ignoreHashChange;
+let g_vsaVisualizer;
+let g_vsaEffect;
+let g_vsaIndex;
 let playing = false;
 let codeElem;
 let helpElem;
@@ -98,6 +110,26 @@ function pause() {
     g_byteBeat.disconnect();
   }
 }
+
+function setSelected(element, selected) {
+  if (element) {
+    element.selected = selected;
+  }
+}
+function setSelectOption(select, selectedIndex) {
+  setSelected(select.options[select.selectedIndex], false);
+  setSelected(select.options[selectedIndex], true);
+}
+
+
+const setVisualizer = ndx => {
+  const {visualizer, fn} = g_visualizers[Math.min(ndx, g_visualizers.length - 1)];
+  g_visualizer = visualizer;
+  if (fn) {
+    fn();
+  }
+  setSelectOption(visualTypeElem, ndx);
+};
 
 async function main() {
   compressor = new LZMA( 'js/lzma_worker.js' );
@@ -201,23 +233,80 @@ async function main() {
       {name: 'none', visualizer: new NullVisualizer() },
     ];
   } else {
-    const gl = document.createElement('canvas').getContext('webgl');
-    g_visualizers = gl
-        ? [
-            { name: 'none', visualizer: new NullVisualizer(), },
-            { name: 'wave', visualizer: new WaveVisualizer(canvas, false), },
-            // { name: 'wavePlus', visualizer: new WaveVisualizer(canvas, true), },
-          ]
-        : [
-            { name: 'none', visualizer: new NullVisualizer(), },
-            { name: 'simple', visualizer: new CanvasVisualizer(canvas), },
-          ];
+    const gl = canvas.getContext('webgl', {
+      alpha: false,
+      antialias: false,
+      preserveDrawingBuffer: true,
+    });
+    if (gl) {
+      twgl.addExtensionsToContext(gl);
+    }
+    if (gl) {
+      g_vsaEffect = new VSAEffect(gl);
+      g_vsaVisualizer = new WebGLVisualizer(gl, [g_vsaEffect]);
+
+      const effects = [
+        new DataEffect(gl),
+        // ...(showSample ? [new SampleEffect(gl)] : []),
+        new WaveEffect(gl),
+        new FFTEffect(gl),
+      ];
+      g_visualizers = [
+        { name: 'none', visualizer: new NullVisualizer(), },
+        { name: 'wave', visualizer: new WebGLVisualizer(gl, effects), },
+      ];
+      g_vsaIndex = g_visualizers.length;
+      g_visualizers.push({ name: 'vsa', visualizer: g_vsaVisualizer,});
+      const vsaUrls = [
+        { url: 'https://www.vertexshaderart.com/art/R2FYLbHWTcCWh5PiE', name: 'blorp', },
+        { url: 'https://www.vertexshaderart.com/art/Xr5DemAP52ZcKLRbQ', name: 'seaqyuk', },
+        { url: 'https://www.vertexshaderart.com/art/hffRc9FH8TMNKECkJ', name: 'bhatsu', },
+        { url: 'https://www.vertexshaderart.com/art/a75Aou3fJGMJjXG5r', name: 'discinos', },
+        { url: 'https://www.vertexshaderart.com/art/QCxSnbduPERK5rQni', name: '?dot-line', },
+        { url: 'https://www.vertexshaderart.com/art/RnwjSt42YXLcGjsgT', name: 'morp', },
+        { url: 'https://www.vertexshaderart.com/art/7YgXgotM2u7EazE58', name: 'add-em-up', },
+        { url: 'https://www.vertexshaderart.com/art/TYoTaksHA6DWsP4aD', name: 'grid', },
+        { url: 'https://www.vertexshaderart.com/art/ctdaXFjXNjTiss8Kh', name: 'circles', },
+        { url: 'https://www.vertexshaderart.com/art/auo92EWvwwyBRak2c', name: 'widr', },
+        { url: 'https://www.vertexshaderart.com/art/xvg4vyvfWjCvKZQfW', name: 'fuzeball', },
+        { url: 'https://www.vertexshaderart.com/art/wFtvqKAQ3wB8Hho3p', name: 'undul', },
+        { url: 'https://www.vertexshaderart.com/art/PFHJfQrt3knT8K8sQ', name: 'flwr', },
+        { url: 'https://www.vertexshaderart.com/art/fmmQsNyrdyjA3226x', name: 'radonut', },
+        { url: 'https://www.vertexshaderart.com/art/yKbsMohpXxZXWLHSm', name: 'vu-w/max', },
+        { url: 'https://www.vertexshaderart.com/art/GxbSZ33B9swmxAmdT', name: 'notmizu', },
+        { url: 'https://www.vertexshaderart.com/art/mNBny7JXpBGwQnMwG', name: 'pulsedn', },
+        { url: 'https://www.vertexshaderart.com/art/YRrZ7fHmFhtoKpyrq', name: 'bebubebup', },
+        { url: 'https://www.vertexshaderart.com/art/qZCxqkkWDsfd8gqGS', name: 'dncrs', },
+        { url: 'https://www.vertexshaderart.com/art/yX9SGHv6RPPqcsXvh', name: 'discus', },
+        { url: 'https://www.vertexshaderart.com/art/Q4dpCbhvWMYfDz5Nb', name: 'smutz', },
+        { url: 'https://www.vertexshaderart.com/art/79HqSrQH4meL63aAo', name: 'ball-o?3', },
+        { url: 'https://www.vertexshaderart.com/art/sHdHwHQ9GTSaJ9j99', name: 'headrush', },
+        { url: 'https://www.vertexshaderart.com/art/zd2E5vCZduc5JeoFz', name: 'cubespace', },
+        { url: 'https://www.vertexshaderart.com/art/PHWvovEcpp6R6yT8K', name: 's.o.i.', },
+        { url: 'https://www.vertexshaderart.com/art/s7zehgnGsLh5aHkM8', name: 'volum', },
+        { url: 'https://www.vertexshaderart.com/art/NR42qFZjAfmdmw6oR', name: 'iblot', },
+        { url: 'https://www.vertexshaderart.com/art/YQhEmHqKTgrDSD3AM', name: 'circlepower', },
+        { url: 'https://www.vertexshaderart.com/art/gX32iAvezAbinbMJz', name: 'c-pump', },
+        { url: 'https://www.vertexshaderart.com/art/p9pecgaEBJ3kz5r7g', name: 'red ring', },
+        { url: 'https://www.vertexshaderart.com/art/g2PZWgGp6YYe9CWwE', name: 'cybr', },
+        { url: 'https://www.vertexshaderart.com/art/MefAhfbtS5ZbYifPi', name: 'qyube', },
+        { url: 'https://www.vertexshaderart.com/art/uuHumiKPEiAKNPkEA', name: 'hexalicious', },
+      ];
+      for (const {url, name} of vsaUrls) {
+        g_visualizers.push({name, visualizer: g_vsaVisualizer, fn: () => {
+          g_vsaEffect.setURL(url);
+        },
+      });
+      }
+    } else {
+      g_visualizers = [
+        { name: 'none', visualizer: new NullVisualizer(), },
+        { name: 'simple', visualizer: new CanvasVisualizer(canvas), },
+      ];
+    }
   }
 
   {
-    const setVisualizer = ndx => {
-      g_visualizer = g_visualizers[ndx].visualizer;
-    };
     const names = g_visualizers.map(({name}) => name);
     const ndx = Math.min(names.length - 1, 1);
     visualTypeElem = addSelection(names, ndx);
@@ -301,16 +390,6 @@ async function main() {
     }
   }
   render();
-
-  function setSelected(element, selected) {
-    if (element) {
-      element.selected = selected;
-    }
-  }
-  function setSelectOption(select, selectedIndex) {
-    setSelected(select.options[select.selectedIndex], false);
-    setSelected(select.options[selectedIndex], true);
-  }
 
   function readURL(hash) {
     const args = hash.split('&');
@@ -499,15 +578,18 @@ async function setExpressions(expressions, resetToZero) {
 function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
-    const expressions = [sections.default || sections.channel1];
+    const expressions = [sections.default?.body || sections.channel1?.body];
     if (sections.channel2) {
-      expressions.push(sections.channel2);
+      expressions.push(sections.channel2.body);
     }
     if (resetToZero) {
       g_visualizer.reset();
     }
-
     setExpressions(expressions, resetToZero);
+  }
+  if (sections.vsa) {
+    g_vsaEffect.setURL(sections.vsa.argString);
+    setVisualizer(g_vsaIndex);
   }
 }
 
