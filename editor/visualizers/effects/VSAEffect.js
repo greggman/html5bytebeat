@@ -284,23 +284,27 @@ export default class VSAEffect {
     };
   }
   async setURL(url) {
-    if (url === this.currentUrl) {
-      // It's the current URL
-      return;
-    }
-    if (url === this.pendingUrl) {
-      // It's the pending Url
-      return;
-    }
-    this.pendingUrl = url;
-    if (this.compiling) {
-      return;
-    }
-    // It doesn't matter if the URL is bad, we don't want to try again
-    this.currentUrl = this.pendingUrl;
-    this.pendingUrl = undefined;
-    this.compiling = true;
     try {
+      const u = new URL(url, window.location.href);
+      if (u.hostname !== window.location.hostname && u.hostname !== 'www.vertexshaderart.com') {
+        return;
+      }
+      if (url === this.currentUrl) {
+        // It's the current URL
+        return;
+      }
+      if (url === this.pendingUrl) {
+        // It's the pending Url
+        return;
+      }
+      this.pendingUrl = url;
+      if (this.compiling) {
+        return;
+      }
+      // It doesn't matter if the URL is bad, we don't want to try again
+      this.currentUrl = this.pendingUrl;
+      this.pendingUrl = undefined;
+      this.compiling = true;
       const req = await fetch(`${url}?format=json`);
       const vsa = await req.json();
       const gl = this.gl;
@@ -371,16 +375,16 @@ export default class VSAEffect {
     twgl.bindFramebufferInfo(gl);
     const settings = this.vsa.settings;
 
+    const programInfo = this.programInfo;
+    if (!programInfo) {
+      return;
+    }
+
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(...settings.backgroundColor);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const programInfo = this.programInfo;
-    if (!programInfo) {
-      return;
-    }
 
     const num = settings.num;
     const mode = gl[settings.mode];
@@ -405,6 +409,9 @@ export default class VSAEffect {
     twgl.setBuffersAndAttributes(gl, programInfo, this.countBufferInfo);
     twgl.setUniforms(programInfo, uniforms);
     twgl.drawBufferInfo(gl, this.countBufferInfo, mode, num);
+
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
   }
 
   render(gl, commonUniforms, byteBeat, analyzers) {

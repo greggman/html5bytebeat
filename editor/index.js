@@ -243,6 +243,8 @@ async function main() {
     }
     if (gl) {
       g_vsaEffect = new VSAEffect(gl);
+      g_vsaEffect.setURL('editor/vsa.json');
+
       g_vsaVisualizer = new WebGLVisualizer(gl, [g_vsaEffect]);
 
       const effects = [
@@ -280,6 +282,7 @@ async function main() {
         { url: 'https://www.vertexshaderart.com/art/yX9SGHv6RPPqcsXvh', name: 'discus', },
         { url: 'https://www.vertexshaderart.com/art/Q4dpCbhvWMYfDz5Nb', name: 'smutz', },
         { url: 'https://www.vertexshaderart.com/art/79HqSrQH4meL63aAo', name: 'ball-o?3', },
+        { url: 'https://www.vertexshaderart.com/art/SHEuL7KCpNnj28Rmn', name: 'incId', },
         { url: 'https://www.vertexshaderart.com/art/sHdHwHQ9GTSaJ9j99', name: 'headrush', },
         { url: 'https://www.vertexshaderart.com/art/zd2E5vCZduc5JeoFz', name: 'cubespace', },
         { url: 'https://www.vertexshaderart.com/art/PHWvovEcpp6R6yT8K', name: 's.o.i.', },
@@ -289,6 +292,7 @@ async function main() {
         { url: 'https://www.vertexshaderart.com/art/gX32iAvezAbinbMJz', name: 'c-pump', },
         { url: 'https://www.vertexshaderart.com/art/p9pecgaEBJ3kz5r7g', name: 'red ring', },
         { url: 'https://www.vertexshaderart.com/art/g2PZWgGp6YYe9CWwE', name: 'cybr', },
+        { url: 'https://www.vertexshaderart.com/art/ysh84kFrt5dxksGM9', name: 'ball', },
         { url: 'https://www.vertexshaderart.com/art/MefAhfbtS5ZbYifPi', name: 'qyube', },
         { url: 'https://www.vertexshaderart.com/art/uuHumiKPEiAKNPkEA', name: 'hexalicious', },
       ];

@@ -1,3 +1,5 @@
+import 'https://greggman.github.io/webgl-lint/webgl-lint.js';
+import * as twgl from '../../js/twgl-full.module.js';
 import Visualizer from './Visualizer.js';
 
 export default class WebGLVisualizer extends Visualizer {
@@ -43,6 +45,7 @@ export default class WebGLVisualizer extends Visualizer {
 
   render(byteBeat, analyzers) {
     const gl = this.gl;
+    twgl.bindFramebufferInfo(gl);
     gl.clearColor(0, 0, 0.3, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
