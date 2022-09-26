@@ -101,34 +101,45 @@ export default async function loadSongs() {
       sizeBin.push({title: `${reaction}${title}`, link, sampleRate});
     }
 
-    const currentHref = window.location.href.replace(origBase, localBase);
-    let count = 0;
-    for (const [category, subCategories] of Object.entries(categories)) {
-      const details = el('details', {className: 'category', open: true}, [
-          el('summary', {textContent: category}),
-          el('div', {}, [...Object.entries(subCategories)].map(([subCategory, sizeBins]) =>
-            el('details', {className: 'sub-category', open: true}, [
-              el('summary', {textContent: subCategory}),
-              el('div', {}, sizeBins.filter(b => !!b).map((songs, bin) =>
-                el('details', {className: 'size-bin', open: true}, [
-                  el('summary', {textContent: sizeBinToString(bin)}),
-                  el('div', {}, songs.map(({title, link, sampleRate}) => {
-                    ++count;
-                    const href = link.replace(origBase, localBase);
-                    return el('a', {
-                      ...((count & 1) === 0 && {className: 'odd'}),
-                      href,
-                      textContent: `${title} (${sampleRate})`,
-                      onClick: highlightLink,
-                      ...(href === currentHref && {classList: 'highlight'}),
-                    });
-                  })),
-                ])
-              )),
-            ]),
-          )),
+    function makeSubTree(className, name, children) {
+      return el('details', {className, open: true}, [
+          el('summary', {textContent: name}),
+          el('div', {}, children),
       ]);
+    }
+
+    const currentHref = window.location.href.replace(origBase, localBase);
+
+    const makeSongElements = (songs) => {
+      return songs.map(({title, link, sampleRate}) => {
+        const href = link.replace(origBase, localBase);
+        return el('a', {
+          href,
+          textContent: `${title} (${sampleRate})`,
+          onClick: highlightLink,
+          ...(href === currentHref && {classList: 'highlight'}),
+        });
+      });
+    };
+
+    const makeSizeBins = (sizeBins) => {
+      return sizeBins.filter(b => !!b).map((songs, bin) =>
+        makeSubTree('size-bin', sizeBinToString(bin), makeSongElements(songs))
+      );
+    };
+
+    const makeSubCategories = (subCategories) => {
+      return [...Object.entries(subCategories)].map(([subCategory, sizeBins]) =>
+        makeSubTree('sub-category', subCategory, makeSizeBins(sizeBins)),
+      );
+    };
+
+    for (const [category, subCategories] of Object.entries(categories)) {
+      const details = makeSubTree('category', category, makeSubCategories(subCategories));
       songListElem.appendChild(details);
+    }
+
+    {
       const elem = document.querySelector('.highlight');
       if (elem) {
         // If a match was found scroll it into view in the song list
@@ -162,6 +173,7 @@ export default async function loadSongs() {
         link.classList.toggle('odd', ndx & 1);
       });
     }
+    search();  // sets odd class on full list
 
     searchElem.addEventListener('keyup', search);
 
