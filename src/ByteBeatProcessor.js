@@ -215,7 +215,7 @@ export default class ByteBeatProcessor {
     const buffer0 = this.buffer0;
     const buffer1 = (fn0Array || fn1) ? this.buffer1 : buffer0;
     const extra = this.extra;
-    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    const divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
 
     const startSrcId = Math.max(this.srcSampleCount, neededSrcStartSampleId);
     const numSrcSampleToGenerate = neededSrcEndSampleId - startSrcId;
@@ -279,7 +279,7 @@ export default class ByteBeatProcessor {
   }
 
   getSampleForTime(time, context, stack, channel = 0) {
-    const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+    const divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
     let s = 0;
     try {
       if (this.functions[0].array) {
