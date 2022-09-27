@@ -223,7 +223,6 @@ export default class ByteBeatCompiler {
       tiltX: 0,
       tiltY: 0,
       compass: 0,
-      sampleRate: 0,
     };
   }
 

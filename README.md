@@ -198,8 +198,6 @@ you use comments for your name, the song's name, etc...
 
 There are several extra inputs available:
 
-The current sample rate is available as `sampleRate`.
-
 The mouse position is available as `mouseX` and `mouseY`
 
 ```js
@@ -207,12 +205,6 @@ sin(t * mouseX * 0.001) + cos(t * mouseY * 0.003)
 ```
 
 The size of the window is available `width` and `height`
-
-The orientation of a device may be available as `tiltX` and `tiltY`.
-
-```js
-(sin(t * 0.1 * tiltX) + cos(t * tiltY * 0.07)) * 0.5
-```
 
 Also note, using the comma operator you can write fairly arbitrary code. [See this example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=1&e=0&s=22000&bb=5d0000010058010000000000000017e07ce86fbd1ca9dedaaaf283d5ff76502fd7dadb76e5d882697d441ca3af61153f2f1380cbf89731ae302303c50ef1ebed677ad146c1f124dcf3cc109dd31ddd363d9d15d0d6a631f5f755297df9d98d614a051e4ed8cad8dae98b3b60d98a87f3ef147227e075cf005fc063cb9e4afe0ef1418c10607d6e7748e5c4477a20901c00ef5379b618214e7e2a2c8a538fec32de37b565c288aa49e52f2bcae7c1c9c474fcf1eb149f734180cccc153d360cb13e758ccf5d1eb9bebee221421a05b2a991f07c0b2ee2ed8ffa2ff5fc).
 
