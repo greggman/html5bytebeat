@@ -574,9 +574,7 @@ async function setExpressions(expressions, resetToZero) {
 
   compileStatusElem.textContent = error ? error : '*';
   compileStatusElem.classList.toggle('error', error);
-  if (!error) {
-    setURL();
-  }
+  setURL();
 }
 
 function compile(text, resetToZero) {
