@@ -72,6 +72,8 @@ infix: `sin(t)`
 
 function: `return t => sin(t)`
 
+Note thought that "function" receives `t` in seconds, not samples.
+
 [See below](#Function)
 
 ### Postfix
@@ -170,6 +172,7 @@ The point being you can write more generic JavaScript. For example
 
 ```js
 const notes = [261.62, 329.628, 391.995, 523.25, 391.995, 329.628, 261.62, 261.62, 1, 1];
+
 function getNote(t) {
   const ndx = (t * 4 | 0) % notes.length;
   return note = notes[ndx];
@@ -180,6 +183,8 @@ return function(t) {
   return sin(t * 10 * note);
 }
 ```
+
+[Example](https://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html#t=1&e=3&s=8000&bb=5d00000100080100000000000000319bca19c63617c05f852678809434c0245718cc973d0784216c18766f89f97417838f624d415ce254f1adfce8a1aa0aca94da7cd23a110b8cb7c5c13d29497b74893a02e812083f504edc25c42ead4ebd79647b868b71508dbcdd834b7a07446239af435da82980ba5f7108aab703421b6143d96834ac872176794e2ba01d8152a4bae0e9e1932f4a3a4a009dd00f27902217477670ef2c0ac8cd96ddf4fe13a4c0)
 
 But see [Rant](#rant) why this is seems kind of missing the point.
 
