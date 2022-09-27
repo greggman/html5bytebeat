@@ -132,8 +132,8 @@ export default class ByteBeatProcessor {
     this.expressionType = 0;
     this.functions = [
       {
-        f: function(t) {
-          return Math.sin(t) * 0.1;
+        f: function() {
+          return 0;
         },
         array: false,
       },
