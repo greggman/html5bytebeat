@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.8, license MIT */
+/* ByteBeat@1.0.9, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -276,7 +276,6 @@
         tiltX: 0,
         tiltY: 0,
         compass: 0,
-        sampleRate: 0,
       };
     }
 
@@ -423,8 +422,9 @@
       array: [
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            const s = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = (s[0] & 255) / 127 - 1;
             buffer1[time % buffer1.length] = (s[1] & 255) / 127 - 1;
             ++time;
@@ -432,8 +432,9 @@
         },
         // case 1:  // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0.call(ctx0, (time / divisor), undefined, stack0, ctx0, extra);
+            const s = fn0.call(ctx0, (time / divisor), sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = Number.isNaN(s[0]) ? 0 : s[0];
             buffer1[time % buffer1.length] = Number.isNaN(s[1]) ? 0 : s[1];
             ++time;
@@ -441,8 +442,9 @@
         },
         // case 2:  // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            const s = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             int8[0] = s[0];
             buffer0[time % buffer0.length] = int8[0] / 128;
             int8[0] = s[1];
@@ -454,27 +456,30 @@
       twoChannels: [
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
-            buffer1[time % buffer1.length] = (fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra) & 255) / 127 - 1;
+            buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra) & 255) / 127 - 1;
+            buffer1[time % buffer1.length] = (fn1.call(ctx1, (time) / divisor, sampleRate, stack1, ctx1, extra) & 255) / 127 - 1;
             ++time;
           }
         },
         // case 1:  // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            const s0 = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            const s0 = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = Number.isNaN(s0) ? 0 : s0;
-            const s1 = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
+            const s1 = fn1.call(ctx1, (time) / divisor, sampleRate, stack1, ctx1, extra);
             buffer1[time % buffer1.length] = Number.isNaN(s1) ? 0 : s1;
           }
         },
         // case 2:  // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            int8[0] = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = int8[0] / 128;
-            int8[0] = fn1.call(ctx1, (time) / divisor, undefined, stack1, ctx1, extra);
+            int8[0] = fn1.call(ctx1, (time) / divisor, sampleRate, stack1, ctx1, extra);
             buffer1[time % buffer1.length] = int8[0] / 128;
             ++time;
           }
@@ -483,23 +488,26 @@
       oneChannel: [
         // case 0: // bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra) & 255) / 127 - 1;
+            buffer0[time % buffer0.length] = (fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra) & 255) / 127 - 1;
             ++time;
           }
         },
         // case 1: // floatbeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            const s = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            const s = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = Number.isNaN(s) ? 0 : s;
             ++time;
           }
         },
         // case 2: // signed bytebeat
         function(buffer0, buffer1, fn0, fn1, time, divisor, stack0, stack1, ctx0, ctx1, extra, lastSample) {
+          const sampleRate = extra?.sampleRate || 8000;
           for (let i = 0; i < lastSample; ++i) {
-            int8[0] = fn0.call(ctx0, (time) / divisor, undefined, stack0, ctx0, extra);
+            int8[0] = fn0.call(ctx0, (time) / divisor, sampleRate, stack0, ctx0, extra);
             buffer0[time % buffer0.length] = int8[0] / 128;
             ++time;
           }
@@ -538,8 +546,8 @@
       this.expressionType = 0;
       this.functions = [
         {
-          f: function(t) {
-            return Math.sin(t) * 0.1;
+          f: function() {
+            return 0;
           },
           array: false,
         },
@@ -577,7 +585,6 @@
 
     setDesiredSampleRate(rate) {
       this.desiredSampleRate = rate;
-      this.extra.sampleRate = rate;
     }
 
     getDesiredSampleRate() {
@@ -630,7 +637,7 @@
       const buffer0 = this.buffer0;
       const buffer1 = (fn0Array || fn1) ? this.buffer1 : buffer0;
       const extra = this.extra;
-      const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+      const divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
 
       const startSrcId = Math.max(this.srcSampleCount, neededSrcStartSampleId);
       const numSrcSampleToGenerate = neededSrcEndSampleId - startSrcId;
@@ -694,7 +701,7 @@
     }
 
     getSampleForTime(time, context, stack, channel = 0) {
-      const divisor = 1; //this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
+      const divisor = this.expressionType === 3 ? this.getDesiredSampleRate() : 1;
       let s = 0;
       try {
         if (this.functions[0].array) {
