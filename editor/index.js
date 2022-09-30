@@ -316,9 +316,26 @@ async function main() {
     visualTypeElem = addSelection(names, ndx);
     visualTypeElem.addEventListener('change', function(event) {
       setVisualizer(event.target.selectedIndex);
+      setURL();
     }, false);
     controls.appendChild(visualTypeElem);
     setVisualizer(ndx);
+  }
+
+  function getChildElemIndexByContent(parent, content) {
+    for (let i = 0; i < parent.children.length; ++i) {
+      if (parent.children[i].textContent === content) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  function setVisualizerByName(name) {
+    const ndx = getChildElemIndexByContent(visualTypeElem, name);
+    if (ndx >= 0) {
+      setVisualizer(ndx);
+    }
   }
 
   saveElem = document.createElement('button');
@@ -396,12 +413,7 @@ async function main() {
   render();
 
   function readURL(hash) {
-    const args = hash.split('&');
-    const data = {};
-    for (let i = 0; i < args.length; ++i) {
-      const parts = args[i].split('=');
-      data[parts[0]] = parts[1];
-    }
+    const data = Object.fromEntries(new URLSearchParams(hash).entries());
     const t = data.t !== undefined ? parseFloat(data.t) : 1;
     const e = data.e !== undefined ? parseFloat(data.e) : 0;
     const s = data.s !== undefined ? parseFloat(data.s) : 8000;
@@ -417,6 +429,9 @@ async function main() {
     g_byteBeat.setType(parseInt(t));
     g_byteBeat.setExpressionType(parseInt(e));
     g_byteBeat.setDesiredSampleRate(parseInt(s));
+    if (data.v) {
+      setVisualizerByName(data.v);
+    }
     const bytes = convertHexToBytes(data.bb);
     compressor.decompress(bytes, function(text) {
         doNotSetURL = true;
@@ -603,11 +618,15 @@ function setURL() {
   compressor.compress(codeElem.value, 1, function(bytes) {
     const hex = convertBytesToHex(bytes);
     g_ignoreHashChange = true;
-    window.location.replace(
-      '#t=' + g_byteBeat.getType() +
-      '&e=' + g_byteBeat.getExpressionType() +
-      '&s=' + g_byteBeat.getDesiredSampleRate() +
-      '&bb=' + hex);
+    const vNdx = visualTypeElem.selectedIndex;
+    const params = new URLSearchParams({
+      t: g_byteBeat.getType(),
+      e: g_byteBeat.getExpressionType(),
+      s: g_byteBeat.getDesiredSampleRate(),
+      ...(vNdx > 2 && {v: visualTypeElem.children[vNdx].textContent}),
+      bb: hex,
+    });
+    window.location.replace(`#${params.toString()}`);
   },
   dummyFunction);
 }
