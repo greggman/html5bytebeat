@@ -216,6 +216,9 @@ option {
     color: #ffffff;
     background-color: #000000;
 }
+.play:before { content: " play ▶"; }
+.pause:before { content: "pause ■"; }
+
 #savedialog {
   display: none;
   z-index: 10;
@@ -302,6 +305,12 @@ input {
   details>* {
     margin-left: 0.25em;
   }
+  .play:before { content: "▶"; }
+  .pause:before { content: "■"; }
+  button, select, .buttonstyle, #showSongs {
+    max-width: 8em;
+  }
+
 }
 </style>
 </head>

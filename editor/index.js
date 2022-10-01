@@ -3,6 +3,8 @@
 import '../js/scrollbars.js';
 import * as twgl from '../js/twgl-full.module.js';
 
+import { createElem as el } from './elem.js';
+
 import ByteBeatNode from '../src/ByteBeatNode.js';
 import WebGLVisualizer from './visualizers/WebGLVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
@@ -177,16 +179,17 @@ async function main() {
 
   function playPause() {
     if (!playing) {
-      playElem.textContent = 'pause ■';
+      playElem.classList.remove('play');
+      playElem.classList.add('pause');
       play();
     } else {
-      playElem.textContent = ' play ▶';
+      playElem.classList.remove('pause');
+      playElem.classList.add('play');
       pause();
       updateTimeDisplay();
     }
   }
-  playElem = document.createElement('button');
-  playElem.addEventListener('click', playPause);
+  playElem = el('button', { className: 'play', onClick: playPause });
   controls.appendChild(playElem);
 
   function addOption(select, text, selected) {
