@@ -155,9 +155,10 @@ async function main() {
   // g_filter.type = 'lowpass';
   // g_filter.frequency.value = 4000;
 
-  g_screenshotCanvas = document.createElement('canvas');
-  g_screenshotCanvas.width = 400;
-  g_screenshotCanvas.height = 100;
+  g_screenshotCanvas = el('canvas', {
+     width: 400,
+     height: 100,
+  });
   g_screenshotContext = g_screenshotCanvas.getContext('2d');
 
   function resetToZero() {
@@ -167,15 +168,15 @@ async function main() {
     updateTimeDisplay();
   }
 
-  helpElem = document.createElement('a');
-  helpElem.href = 'https://github.com/greggman/html5bytebeat';
-  helpElem.innerHTML = '?';
-  helpElem.className = 'buttonstyle';
+  helpElem = el('a', {
+      href: 'https://github.com/greggman/html5bytebeat',
+      textContent: '?',
+      className: 'buttonstyle',
+  });
   controls.appendChild(helpElem);
 
-  timeElem = document.createElement('button');
+  timeElem = el('button', {onClick: resetToZero});
   controls.appendChild(timeElem);
-  timeElem.addEventListener('click', resetToZero);
 
   function playPause() {
     if (!playing) {
@@ -192,43 +193,43 @@ async function main() {
   playElem = el('button', { className: 'play', onClick: playPause });
   controls.appendChild(playElem);
 
-  function addOption(select, text, selected) {
-      const option = document.createElement('option');
-      option.textContent = text;
-      if (selected) {
-        option.selected = true;
-      }
-      select.appendChild(option);
+  function addOption(textContent, selected) {
+      return el('option', {
+        textContent,
+        ...(selected && {selected}),
+      });
   }
 
-  function addSelection(options, selectedIndex) {
-    const select = document.createElement('select');
-    for (let i = 0; i < options.length; ++i) {
-      addOption(select, options[i], i === selectedIndex);
-    }
+  function addSelection(options, selectedIndex, props = {}) {
+    const select = el('select', props, options.map((option, i) => {
+      return addOption(option, i === selectedIndex);
+    }));
     return select;
   }
 
-  beatTypeElem = addSelection(s_beatTypes, 0);
-  beatTypeElem.addEventListener('change', function(event) {
-    g_byteBeat.setType(event.target.selectedIndex);
-    setURL();
-  }, false);
+  beatTypeElem = addSelection(s_beatTypes, 0, {
+    onChange(event) {
+      g_byteBeat.setType(event.target.selectedIndex);
+      setURL();
+    },
+  });
   controls.appendChild(beatTypeElem);
 
-  expressionTypeElem = addSelection(s_expressionTypes, 0);
-  expressionTypeElem.addEventListener('change', function(event) {
-    g_byteBeat.setExpressionType(event.target.selectedIndex);
-    setExpressions(g_byteBeat.getExpressions());
-  }, false);
+  expressionTypeElem = addSelection(s_expressionTypes, 0, {
+      onChange(event) {
+        g_byteBeat.setExpressionType(event.target.selectedIndex);
+        setExpressions(g_byteBeat.getExpressions());
+      },
+  });
   controls.appendChild(expressionTypeElem);
 
   const sampleRates = [8000, 11000, 22000, 32000, 44100, 48000];
-  sampleRateElem = addSelection(['8kHz', '11kHz', '22kHz', '32kHz', '44kHz', '48kHz'], 0);
-  sampleRateElem.addEventListener('change', function(event) {
-    g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
-    setURL();
-  }, false);
+  sampleRateElem = addSelection(['8kHz', '11kHz', '22kHz', '32kHz', '44kHz', '48kHz'], 0, {
+    onChange(event) {
+      g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
+      setURL();
+    }, 
+  });
   controls.appendChild(sampleRateElem);
 
   if (g_slow) {
@@ -316,11 +317,12 @@ async function main() {
   {
     const names = g_visualizers.map(({name}) => name);
     const ndx = Math.min(names.length - 1, 1);
-    visualTypeElem = addSelection(names, ndx);
-    visualTypeElem.addEventListener('change', function(event) {
-      setVisualizer(event.target.selectedIndex);
-      setURL();
-    }, false);
+    visualTypeElem = addSelection(names, ndx, {
+      onChange(event) {
+        setVisualizer(event.target.selectedIndex);
+        setURL();
+      },
+    });
     controls.appendChild(visualTypeElem);
     setVisualizer(ndx);
   }
@@ -341,14 +343,16 @@ async function main() {
     }
   }
 
-  saveElem = document.createElement('button');
-  saveElem.textContent = 'save';
-  saveElem.addEventListener('click', startSave);
+  saveElem = el('button', {
+    textContent: 'save',
+    onClick: startSave,
+  });
   controls.appendChild(saveElem);
 
-  compileStatusElem = document.createElement('button');
-  compileStatusElem.className = 'status';
-  compileStatusElem.textContent = '---';
+  compileStatusElem = el('button', {
+    className: 'status',
+    textContent: '---',
+  });
   controls.appendChild(compileStatusElem);
 
   codeElem = $('code');
@@ -423,7 +427,7 @@ async function main() {
     let rateNdx = sampleRates.indexOf(s);
     if (rateNdx < 0) {
       rateNdx = sampleRates.length;
-      addOption(sampleRateElem, s);
+      sampleRateElem.appendChild(addOption(s));
       sampleRates.push(s);
     }
     setSelectOption(sampleRateElem, rateNdx);
@@ -496,9 +500,8 @@ async function showSaveDialog() {
     }
   }
   const saveData = (function() {
-    const a = document.createElement('a');
+    const a = el('a', {style: {display: 'none'}});
     document.body.appendChild(a);
-    a.style.display = 'none';
     return function saveData(blob, fileName) {
       const url = window.URL.createObjectURL(blob);
       a.href = url;
