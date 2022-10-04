@@ -228,7 +228,7 @@ async function main() {
     onChange(event) {
       g_byteBeat.setDesiredSampleRate(sampleRates[event.target.selectedIndex]);
       setURL();
-    }, 
+    },
   });
   controls.appendChild(sampleRateElem);
 
