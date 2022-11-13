@@ -17,10 +17,6 @@ to Math.sin, Math.cos, Math.tan, Math.floor, Math.ceil, and Math.floor respectiv
 
 [Click here to try your hand at Bytebeat](http://greggman.com/downloads/examples/html5bytebeat/html5bytebeat.html).
 
-# Songs
-
-You can find sample songs [here](https://github.com/greggman/html5bytebeat/issues/17)
-
 # Instructions
 
 ### Modes
