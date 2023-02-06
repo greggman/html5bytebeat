@@ -259,7 +259,7 @@ export default class ByteBeatCompiler {
     delete keys['Math'];
     delete keys['window'];
     return `
-        (0['constructor']['constructor'] = '');
+        {try { (0['constructor']['constructor'].prototype.constructor = '') } catch (e) {}};
         var ${Object.keys(keys).sort().join(',\n')};
         ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;
