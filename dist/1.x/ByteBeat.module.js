@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.10, license MIT */
+/* ByteBeat@1.0.11, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -306,7 +306,7 @@ class ByteBeatCompiler {
     delete keys['Math'];
     delete keys['window'];
     return `
-        (0['constructor']['constructor'] = '');
+        {try { (0['constructor']['constructor'].prototype.constructor = '') } catch (e) {}};
         var ${Object.keys(keys).sort().join(',\n')};
         ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;

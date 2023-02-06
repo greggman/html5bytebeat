@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.10, license MIT */
+/* ByteBeat@1.0.11, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -312,7 +312,7 @@
       delete keys['Math'];
       delete keys['window'];
       return `
-        (0['constructor']['constructor'] = '');
+        {try { (0['constructor']['constructor'].prototype.constructor = '') } catch (e) {}};
         var ${Object.keys(keys).sort().join(',\n')};
         ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;
