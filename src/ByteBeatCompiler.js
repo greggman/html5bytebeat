@@ -259,6 +259,7 @@ export default class ByteBeatCompiler {
     delete keys['Math'];
     delete keys['window'];
     return `
+        (0['constructor']['constructor'] = '');
         var ${Object.keys(keys).sort().join(',\n')};
         ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;
@@ -268,6 +269,7 @@ export default class ByteBeatCompiler {
 
 
   static expressionStringToFn(evalExp, extra, test) {
+    // console.log(`---\n${evalExp}\n---`);
     // eslint-disable-next-line no-new-func
     const fp = new Function('stack', 'window', 'extra', evalExp);
     let f = fp(undefined, undefined, undefined);
