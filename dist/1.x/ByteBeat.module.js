@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.9, license MIT */
+/* ByteBeat@1.0.10, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -306,6 +306,7 @@ class ByteBeatCompiler {
     delete keys['Math'];
     delete keys['window'];
     return `
+        (0['constructor']['constructor'] = '');
         var ${Object.keys(keys).sort().join(',\n')};
         ${ByteBeatCompiler.addGlobals(Math, 'Math')}
     `;
@@ -315,6 +316,7 @@ class ByteBeatCompiler {
 
 
   static expressionStringToFn(evalExp, extra, test) {
+    // console.log(`---\n${evalExp}\n---`);
     // eslint-disable-next-line no-new-func
     const fp = new Function('stack', 'window', 'extra', evalExp);
     let f = fp(undefined, undefined, undefined);
