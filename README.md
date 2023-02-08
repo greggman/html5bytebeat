@@ -399,6 +399,15 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
   actually be assigned to `window`, it will
   be assigned to the context (in theory)
 
+## Development / running locally
+
+```
+git clone https://github.com/greggman/html5bytebeat.git
+cd html5bytebeat
+npm i
+npm start
+```
+
 # License
 
 [MIT](LICENSE.md)
