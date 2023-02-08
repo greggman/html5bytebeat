@@ -408,6 +408,14 @@ npm i
 npm start
 ```
 
+The instructions above assume you have node.js installed. If not, if you're
+on windows use [nvm-windows](https://github.com/coreybutler/nvm-windows),
+or if you're on mac/linux use [nvm](https://github.com/nvm-sh/nvm).
+
+Or you can just use the installers at [nodejs.org](https://nodejs.org) though
+I'd recommend nvm and nvm-windows personally as once you get into node dev
+you'll likely need different versions for different projects.
+
 # License
 
 [MIT](LICENSE.md)
