@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.11, license MIT */
+/* ByteBeat@1.0.12, license MIT */
 class WrappingStack {
   constructor(stackSize = 256) {
     let sp = 0;
@@ -291,7 +291,9 @@ class ByteBeatCompiler {
   }
 
   static s_fnHeader = (function() {
-    const keys = {};
+    const keys = {
+      import: true,
+    };
     const windowKeep = new Set([
       'parseInt',
       'parseFloat',
