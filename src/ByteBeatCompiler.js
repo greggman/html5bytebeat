@@ -244,9 +244,7 @@ export default class ByteBeatCompiler {
   }
 
   static s_fnHeader = (function() {
-    const keys = {
-      'import': true,
-    };
+    const keys = {};
     const windowKeep = new Set([
       'parseInt',
       'parseFloat',
@@ -339,6 +337,7 @@ export default class ByteBeatCompiler {
         return Object.prototype.hasOwnProperty.call(obj, p1) ? (name + p1) : str;
       }
       x = x.replace(/\bint\b/g, 'floor');
+      x = x.replace(/\bimport\b/g, 'notimport');
       x = x.replace(/(?:extra\.)?(\w+)/g, function(substr, p1) {
         return replacer(substr, extra, p1, 'extra.');
       });
