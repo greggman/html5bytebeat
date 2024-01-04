@@ -298,7 +298,7 @@
 
     static s_fnHeader = (function() {
       const keys = {
-        import: true,
+        'import': true,
       };
       const windowKeep = new Set([
         'parseInt',
