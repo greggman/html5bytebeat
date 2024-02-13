@@ -1,4 +1,4 @@
-import 'https://greggman.github.io/webgl-lint/webgl-lint.js';
+// import 'https://greggman.github.io/webgl-lint/webgl-lint.js';
 import * as twgl from '../../js/twgl-full.module.js';
 import Visualizer from './Visualizer.js';
 
