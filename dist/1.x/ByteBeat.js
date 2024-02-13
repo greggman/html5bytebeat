@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.15, license MIT */
+/* ByteBeat@1.0.16, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -785,7 +785,9 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
+    if (outputs.length > 0) {
+      this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
+    }
     return true;
   }
 }
