@@ -642,6 +642,13 @@ function setURL() {
   $('loadingContainer').style.display = 'none';
   const s = $('startContainer');
   s.style.display = '';
+
+  const mayBeChrome122 = (navigator.userAgentData?.brands || []).findIndex(e => e.version === '122') >= 0;
+  if (mayBeChrome122) {
+    const chrome122Issue = $('chrome122issue');
+    chrome122Issue.style.display = '';
+  }
+
   s.addEventListener('click', function() {
     s.style.display = 'none';
     main();

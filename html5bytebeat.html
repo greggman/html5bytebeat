@@ -262,6 +262,7 @@ input {
 #loadingContainer,
 #startContainer {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 1000;
@@ -291,6 +292,17 @@ input {
   padding: 0.5em;
   background-color: rgba(0, 0, 0, 0.9);
   color: #0F0
+}
+#chrome122issue {
+  margin: 1em;
+  padding: 1em;
+  border-radius: 1em;
+  background-color: red;
+  color: white;
+}
+#chrome122issue a {
+  text-decoration: underline;
+  color: cyan;
 }
 @media screen and (max-width: 700px) {
   #startButton {
@@ -346,7 +358,10 @@ input {
   </div>
 </div>
 <div id="startContainer" style="display: none;">
-   <div id="startButton">play ▶</div>
+  <div id="startButton">play ▶</div>
+  <div id="chrome122issue" style="display:none;">
+    <div>Chrome v122 is broken. Please vote to get this fixed ASAP <a href="https://issues.chromium.org/issues/324293899">here</a>.</div>
+  </div>
 </div>
 <div id="loadingContainer">
    <div>loading...</div>
