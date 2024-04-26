@@ -10,11 +10,11 @@ import WebGLVisualizer from './visualizers/WebGLVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
 
-import DataEffect from './visualizers/effects/DataEffect.js';
+//import DataEffect from './visualizers/effects/DataEffect.js';
 import FFTEffect from './visualizers/effects/FFTEffect.js';
 //import SampleEffect from './visualizers/effects/SampleEffect.js';
 import VSAEffect from './visualizers/effects/VSAEffect.js';
-import WaveEffect from './visualizers/effects/WaveEffect.js';
+//import WaveEffect from './visualizers/effects/WaveEffect.js';
 
 import songList from './songList.js';
 
@@ -252,9 +252,9 @@ async function main() {
       g_vsaVisualizer = new WebGLVisualizer(gl, [g_vsaEffect]);
 
       const effects = [
-        new DataEffect(gl),
+        //new DataEffect(gl),
         // ...(showSample ? [new SampleEffect(gl)] : []),
-        new WaveEffect(gl),
+        //new WaveEffect(gl),
         new FFTEffect(gl),
       ];
       g_visualizers = [
@@ -589,6 +589,7 @@ async function setExpressions(expressions, resetToZero) {
   let error;
   try {
     await g_byteBeat.setExpressions(expressions, resetToZero);
+
   } catch (e) {
     error = e;
   }
