@@ -31,6 +31,8 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
         throw new Error(\`BeatProcessor unknown command: '\${cmd}'\`);
       }
     };
+    this.expressions = [];
+    this.functions = [];
   }
 
   // TODO: replace
@@ -42,7 +44,82 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     this.byteBeat[fn].call(this.byteBeat, ...args);
   }
 
-  setExpressions(data) {
+  callAsync({fn, msgId, args}) {
+    let result;
+    let error;
+    try {
+      result = this[fn].call(this, ...args);
+    } catch (e) {
+      error = e;
+    }
+    this.port.postMessage({
+      cmd: 'asyncResult',
+      data: {
+        msgId,
+        error,
+        result,
+      },
+    });
+  }
+
+  setExpressions(expressions, resetToZero) {
+    const compileExpressions = (expressions, expressionType, extra) => {
+      const funcs = [];
+      try {
+        for (let i = 0; i < expressions.length; ++i) {
+          const exp = expressions[i];
+          if (exp !== this.expressions[i]) {
+            funcs.push(ByteBeatCompiler.compileExpression(exp, expressionType, extra));
+          } else {
+            if (this.functions[i]) {
+              funcs.push(this.functions[i]);
+            }
+          }
+        }
+      } catch (e) {
+        if (e.stack) {
+          const m = /<anonymous>:1:(\\d+)/.exec(e.stack);
+          if (m) {
+            const charNdx = parseInt(m[1]);
+            console.error(e.stack);
+            console.error(expressions.join('\\n').substring(0, charNdx), '-----VVVVV-----\\n', expressions.substring(charNdx));
+          }
+        } else {
+          console.error(e, e.stack);
+        }
+        throw e;
+      }
+      return funcs;
+    };
+    const funcs = compileExpressions(expressions, this.byteBeat.getExpressionType(), this.byteBeat.getExtra());
+    if (!funcs) {
+      return {};
+    }
+
+    // copy the expressions
+    this.expressions = expressions.slice(0);
+    this.functions = funcs;
+    const exp = funcs.map(({expression}) => expression);
+    // I feel like a Windows programmer. The reset to zero
+    // is needed because some expressions do stuff like
+    //
+    //     window.channels = t > 0 ? window.channels : data
+    //
+    // but because we are now async if I send 2 messages
+    // there's no guarantee the time will be zero between
+    // the message that sets the expression and the message
+    // that sets the time so it's possible t will never be zero
+    if (resetToZero) {
+      this.setExpressionsAndResetToZero(exp);
+    } else {
+      this.setExpressionsForReal(exp);
+    }
+    return {
+      numChannels: this.byteBeat.getNumChannels(),
+    };
+  }
+
+  setExpressionsForReal(data) {
     this.byteBeat.setExpressions(data);
   }
 
@@ -86,7 +163,7 @@ export default class ByteBeatNode extends AudioWorkletNode {
     function: 3,          // return sin(t / 50)
   };
   static async setup(context) {
-    return context.audioWorklet.addModule(workerURL);
+    return await context.audioWorklet.addModule(workerURL);
   }
   static createStack() {
     return new WrappingStack();
@@ -94,6 +171,14 @@ export default class ByteBeatNode extends AudioWorkletNode {
   static createContext() {
     return ByteBeatCompiler.makeContext();
   }
+
+  #msgIdToResolveMap = new Map();
+  #nextId = 0;
+  #type;
+  #numChannels = 1;
+  #desiredSampleRate;
+  #actualSampleRate;
+
   constructor(context) {
     super(context, 'bytebeat-processor', { outputChannelCount: [2] });
 
@@ -104,7 +189,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
           mouseX: event.clientX,
           mouseY: event.clientY,
         };
-        this.byteBeat.setExtra(data);
         this.#sendExtra(data);
       }, true);
 
@@ -121,7 +205,6 @@ export default class ByteBeatNode extends AudioWorkletNode {
             // alpha is the compass direction the device is facing in degrees
             compass: eventData.alpha,
           };
-          this.byteBeat.setExtra(data);
           this.#sendExtra(data);
         }, false);
       }
@@ -136,9 +219,32 @@ export default class ByteBeatNode extends AudioWorkletNode {
     this.pauseTime = this.startTime;      // time since the song was paused
     this.connected = false;               // whether or not we're playing the bytebeat
 
-    this.byteBeat = new ByteBeatProcessor();
-    this.byteBeat.setActualSampleRate(context.sampleRate);
+    this.#actualSampleRate = context.sampleRate;
     this.#callFunc('setActualSampleRate', context.sampleRate);
+
+    this.port.onmessage = this.#processMsg.bind(this);
+  }
+
+  #processMsg(event) {
+    const {cmd, data} = event.data;
+    switch (cmd) {
+      case 'asyncResult': {
+        const {msgId, error, result} = data;
+        const {resolve, reject} = this.#msgIdToResolveMap.get(msgId);
+        if (!resolve) {
+          throw new Error(`unknown msg id: ${msgId}`);
+        }
+        this.#msgIdToResolveMap.delete(msgId);
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+        break;
+      }
+      default:
+        throw Error(`unknown cmd: ${cmd}`);
+    }
   }
 
   #sendExtra(data) {
@@ -155,6 +261,22 @@ export default class ByteBeatNode extends AudioWorkletNode {
         fn: fnName,
         args,
       },
+    });
+  }
+
+  #callAsync(fnName, ...args) {
+    const msgId = this.#nextId++;
+    this.port.postMessage({
+      cmd: 'callAsync',
+      data: {
+        fn: fnName,
+        msgId,
+        args,
+      },
+    });
+    const m = this.#msgIdToResolveMap;
+    return new Promise((resolve, reject) => {
+      m.set(msgId, {resolve, reject});
     });
   }
 
@@ -177,13 +299,11 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   resize(width, height) {
     const data = {width, height};
-    this.byteBeat.setExtra(data);
     this.#sendExtra(data);
   }
 
   reset() {
     this.#callFunc('reset');
-    this.byteBeat.reset();
     this.startTime = performance.now();
     this.pauseTime = this.startTime;
   }
@@ -194,82 +314,30 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   getTime() {
     const time = this.connected ? performance.now() : this.pauseTime;
-    return (time - this.startTime) * 0.001 * this.byteBeat.getDesiredSampleRate() | 0;
+    return (time - this.startTime) * 0.001 * this.getDesiredSampleRate() | 0;
   }
 
-  setExpressions(expressions, resetToZero) {
-    const compileExpressions = (expressions, expressionType, extra) => {
-      const funcs = [];
-      try {
-        for (let i = 0; i < expressions.length; ++i) {
-          const exp = expressions[i];
-          if (exp !== this.expressions[i]) {
-            funcs.push(ByteBeatCompiler.compileExpression(exp, expressionType, extra));
-          } else {
-            if (this.functions[i]) {
-              funcs.push(this.functions[i]);
-            }
-          }
-        }
-      } catch (e) {
-        if (e.stack) {
-          const m = /<anonymous>:1:(\d+)/.exec(e.stack);
-          if (m) {
-            const charNdx = parseInt(m[1]);
-            console.error(e.stack);
-            console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
-          }
-        } else {
-          console.error(e, e.stack);
-        }
-        throw e;
-      }
-      return funcs;
-    };
-    const funcs = compileExpressions(expressions, this.expressionType, this.extra);
-    if (!funcs) {
-      return;
-    }
-
-    // copy the expressions
-    this.expressions = expressions.slice(0);
-    this.functions = funcs;
-    const exp = funcs.map(({expression}) => expression);
-    // I feel like a Windows programmer. The reset to zero
-    // is needed because some expressions do stuff like
-    //
-    //     window.channels = t > 0 ? window.channels : data
-    //
-    // but because we are now async if I send 2 messages
-    // there's no guarantee the time will be zero between
-    // the message that sets the expression and the message
-    // that sets the time so it's possible t will never be zero
-    this.port.postMessage({
-      cmd: resetToZero ? 'setExpressionsAndResetToZero' : 'setExpressions',
-      data: exp,
-    });
-    this.byteBeat.setExpressions(exp);
-    if (resetToZero) {
-      this.reset();
-    }
+  async setExpressions(expressions, resetToZero) {
+    const data = await this.#callAsync('setExpressions', expressions, resetToZero);
+    this.#numChannels = data.numChannels;
+    return;
   }
 
   convertToDesiredSampleRate(rate) {
-    return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+    return Math.floor(rate * this.#desiredSampleRate / this.#actualSampleRate);
   }
 
   setDesiredSampleRate(rate) {
+    this.#desiredSampleRate = rate;
     this.#callFunc('setDesiredSampleRate', rate);
-    this.byteBeat.setDesiredSampleRate(rate);
   }
 
   getDesiredSampleRate() {
-    return this.byteBeat.getDesiredSampleRate();
+    return this.#desiredSampleRate;
   }
 
   setExpressionType(type) {
     this.expressionType = type;
-    this.byteBeat.setExpressionType(type);
     this.#callFunc('setExpressionType', type);
   }
 
@@ -278,27 +346,19 @@ export default class ByteBeatNode extends AudioWorkletNode {
   }
 
   getExpressionType() {
-    return this.byteBeat.getExpressionType();
+    return this.expressionType;
   }
 
   setType(type) {
-    this.byteBeat.setType(type);
+    this.#type = type;
     this.#callFunc('setType', type);
   }
 
   getType() {
-    return this.byteBeat.getType();
+    return this.#type;
   }
 
   getNumChannels() {
-    return this.byteBeat.getNumChannels();
-  }
-
-  process(dataLength, leftData, rightData) {
-    this.byteBeat.process(dataLength, leftData, rightData);
-  }
-
-  getSampleForTime(time, context, stack, channel) {
-    return this.byteBeat.getSampleForTime(time, context, stack, channel);
+    return this.#numChannels;
   }
 }

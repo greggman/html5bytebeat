@@ -153,6 +153,10 @@ export default class ByteBeatProcessor {
     Object.assign(this.extra, props);
   }
 
+  getExtra() {
+    return {...this.extra};
+  }
+
   getTime() {
     return this.convertToDesiredSampleRate(this.dstSampleCount);
   }
