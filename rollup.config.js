@@ -2,6 +2,7 @@ import fs from 'fs';
 
 const pkg = JSON.parse(fs.readFileSync('package.json', {encoding: 'utf8'}));
 const banner = `/* ByteBeat@${pkg.version}, license MIT */`;
+const version = /^(\d+)\./.exec(pkg.version)[1];
 
 export default [
   {
@@ -10,13 +11,13 @@ export default [
       {
         format: 'umd',
         name: 'ByteBeatNode',
-        file: 'dist/1.x/ByteBeat.js',
+        file: `dist/${version}.x/ByteBeat.js`,
         indent: '  ',
         banner,
       },
       {
         format: 'es',
-        file: 'dist/1.x/ByteBeat.module.js',
+        file: `dist/${version}.x/ByteBeat.module.js`,
         indent: '  ',
         banner,
       },
