@@ -14,7 +14,7 @@ import DataEffect from './visualizers/effects/DataEffect.js';
 import FFTEffect from './visualizers/effects/FFTEffect.js';
 //import SampleEffect from './visualizers/effects/SampleEffect.js';
 import VSAEffect from './visualizers/effects/VSAEffect.js';
-//import WaveEffect from './visualizers/effects/WaveEffect.js';
+import WaveEffect from './visualizers/effects/WaveEffect.js';
 
 import songList from './songList.js';
 
@@ -254,7 +254,7 @@ async function main() {
       const effects = [
         new DataEffect(gl),
         // ...(showSample ? [new SampleEffect(gl)] : []),
-        //new WaveEffect(gl),
+        new WaveEffect(gl),
         new FFTEffect(gl),
       ];
       g_visualizers = [

@@ -62,8 +62,13 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     const transferables = [];
     try {
       result = this[fn].call(this, ...args);
-      if (result instanceof Float32Array) {
-        //transferables.push(result);
+      if (result && result.length) {
+        for (let i = 0; i < result.length; ++i) {
+          const o = result[i];
+          if (o instanceof Float32Array) {
+            transferables.push(o);
+          }
+        }
       }
     } catch (e) {
       error = e;
@@ -166,14 +171,14 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     this.#deregisterObj(id);
   }
 
-  getSamplesForTimeRange(start, end, step, contextId, stackId, channel = 0) {
+  getSamplesForTimeRange(start, end, numSamples, contextId, stackId, channel = 0) {
     const context = this.idToObj.get(contextId);
     const stack = this.idToObj.get(stackId);
-    const len = Math.ceil((end - start) / step);
-    const data = new Float32Array(len);
-    let cursor = 0;
-    for (let time = start; time < end; time += step) {
-      data[cursor++] = this.byteBeat.getSampleForTime(time, context, stack, channel);
+    const data = new Float32Array(numSamples);
+    const duration = end - start;
+    for (let i = 0; i < numSamples; ++i) {
+      const time = start + duration * i / numSamples | 0;
+      data[i] = this.byteBeat.getSampleForTime(time, context, stack, channel);
     }
     return data;
   }
