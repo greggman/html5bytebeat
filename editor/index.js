@@ -10,7 +10,7 @@ import WebGLVisualizer from './visualizers/WebGLVisualizer.js';
 import CanvasVisualizer from './visualizers/CanvasVisualizer.js';
 import NullVisualizer from './visualizers/NullVisualizer.js';
 
-//import DataEffect from './visualizers/effects/DataEffect.js';
+import DataEffect from './visualizers/effects/DataEffect.js';
 import FFTEffect from './visualizers/effects/FFTEffect.js';
 //import SampleEffect from './visualizers/effects/SampleEffect.js';
 import VSAEffect from './visualizers/effects/VSAEffect.js';
@@ -252,7 +252,7 @@ async function main() {
       g_vsaVisualizer = new WebGLVisualizer(gl, [g_vsaEffect]);
 
       const effects = [
-        //new DataEffect(gl),
+        new DataEffect(gl),
         // ...(showSample ? [new SampleEffect(gl)] : []),
         //new WaveEffect(gl),
         new FFTEffect(gl),
@@ -599,7 +599,7 @@ async function setExpressions(expressions, resetToZero) {
   setURL();
 }
 
-function compile(text, resetToZero) {
+async function compile(text, resetToZero) {
   const sections = splitBySections(text);
   if (sections.default || sections.channel1) {
     const expressions = [sections.default?.body || sections.channel1?.body];
@@ -609,7 +609,10 @@ function compile(text, resetToZero) {
     if (resetToZero) {
       g_visualizer.reset();
     }
-    setExpressions(expressions, resetToZero);
+    await setExpressions(expressions, resetToZero);
+    if (resetToZero) {
+      g_visualizer.reset();
+    }
   }
   if (sections.vsa) {
     g_vsaEffect.setURL(sections.vsa.argString);
