@@ -1,4 +1,4 @@
-/* ByteBeat@1.0.16, license MIT */
+/* ByteBeat@2.0.0, license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
@@ -570,6 +570,10 @@
       Object.assign(this.extra, props);
     }
 
+    getExtra() {
+      return {...this.extra};
+    }
+
     getTime() {
       return this.convertToDesiredSampleRate(this.dstSampleCount);
     }
@@ -763,6 +767,20 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
         throw new Error(\`BeatProcessor unknown command: '\${cmd}'\`);
       }
     };
+    this.expressions = [];
+    this.functions = [];
+    this.nextObjId = 1;
+    this.idToObj = new Map();
+  }
+
+  #registerObj(obj) {
+    const id = this.nextObjId++;
+    this.idToObj.set(id, obj);
+    return id;
+  }
+
+  #deregisterObj(id) {
+    this.idToObj.delete(id);
   }
 
   // TODO: replace
@@ -774,7 +792,92 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     this.byteBeat[fn].call(this.byteBeat, ...args);
   }
 
-  setExpressions(data) {
+  callAsync({fn, msgId, args}) {
+    let result;
+    let error;
+    const transferables = [];
+    try {
+      result = this[fn].call(this, ...args);
+      if (result && result.length) {
+        for (let i = 0; i < result.length; ++i) {
+          const o = result[i];
+          if (o instanceof Float32Array) {
+            transferables.push(o);
+          }
+        }
+      }
+    } catch (e) {
+      error = e;
+    }
+    this.port.postMessage({
+      cmd: 'asyncResult',
+      data: {
+        msgId,
+        error,
+        result,
+      },
+    }, transferables);
+  }
+
+  setExpressions(expressions, resetToZero) {
+    const compileExpressions = (expressions, expressionType, extra) => {
+      const funcs = [];
+      try {
+        for (let i = 0; i < expressions.length; ++i) {
+          const exp = expressions[i];
+          if (exp !== this.expressions[i]) {
+            funcs.push(ByteBeatCompiler.compileExpression(exp, expressionType, extra));
+          } else {
+            if (this.functions[i]) {
+              funcs.push(this.functions[i]);
+            }
+          }
+        }
+      } catch (e) {
+        if (e.stack) {
+          const m = /<anonymous>:1:(\\d+)/.exec(e.stack);
+          if (m) {
+            const charNdx = parseInt(m[1]);
+            console.error(e.stack);
+            console.error(expressions.join('\\n').substring(0, charNdx), '-----VVVVV-----\\n', expressions.substring(charNdx));
+          }
+        } else {
+          console.error(e, e.stack);
+        }
+        throw e;
+      }
+      return funcs;
+    };
+    const funcs = compileExpressions(expressions, this.byteBeat.getExpressionType(), this.byteBeat.getExtra());
+    if (!funcs) {
+      return {};
+    }
+
+    // copy the expressions
+    this.expressions = expressions.slice(0);
+    this.functions = funcs;
+    const exp = funcs.map(({expression}) => expression);
+    // I feel like a Windows programmer. The reset to zero
+    // is needed because some expressions do stuff like
+    //
+    //     window.channels = t > 0 ? window.channels : data
+    //
+    // but because we are now async if I send 2 messages
+    // there's no guarantee the time will be zero between
+    // the message that sets the expression and the message
+    // that sets the time so it's possible t will never be zero
+    if (resetToZero) {
+      this.setExpressionsAndResetToZero(exp);
+    } else {
+      this.setExpressionsForReal(exp);
+    }
+    return {
+      numChannels: this.byteBeat.getNumChannels(),
+      expressions: exp,
+    };
+  }
+
+  setExpressionsForReal(data) {
     this.byteBeat.setExpressions(data);
   }
 
@@ -785,10 +888,35 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    if (outputs.length > 0) {
+    //if (outputs.length > 0) {
       this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
-    }
+    //}
     return true;
+  }
+
+  createStack() {
+    return this.#registerObj(new WrappingStack());
+  }
+  createContext() {
+    return this.#registerObj(ByteBeatCompiler.makeContext());
+  }
+  destroyStack(id) {
+    this.#deregisterObj(id);
+  }
+  destroyContext(id) {
+    this.#deregisterObj(id);
+  }
+
+  getSamplesForTimeRange(start, end, numSamples, contextId, stackId, channel = 0) {
+    const context = this.idToObj.get(contextId);
+    const stack = this.idToObj.get(stackId);
+    const data = new Float32Array(numSamples);
+    const duration = end - start;
+    for (let i = 0; i < numSamples; ++i) {
+      const time = start + duration * i / numSamples | 0;
+      data[i] = this.byteBeat.getSampleForTime(time, context, stack, channel);
+    }
+    return data;
   }
 }
 
@@ -818,14 +946,22 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
       function: 3,          // return sin(t / 50)
     };
     static async setup(context) {
-      return context.audioWorklet.addModule(workerURL);
+      return await context.audioWorklet.addModule(workerURL);
     }
-    static createStack() {
-      return new WrappingStack();
-    }
-    static createContext() {
-      return ByteBeatCompiler.makeContext();
-    }
+
+    #startTime = 0; // time since the song started playing
+    #pauseTime = 0; // time since the song was paused
+    #connected = false;
+    #expressionType = 0;
+    #expressions = [];
+    #msgIdToResolveMap = new Map();
+    #nextId = 0;
+    #type;
+    #numChannels = 1;
+    #desiredSampleRate;
+    #actualSampleRate;
+    #busyPromise;
+
     constructor(context) {
       super(context, 'bytebeat-processor', { outputChannelCount: [2] });
 
@@ -836,7 +972,6 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
             mouseX: event.clientX,
             mouseY: event.clientY,
           };
-          this.byteBeat.setExtra(data);
           this.#sendExtra(data);
         }, true);
 
@@ -853,24 +988,40 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
               // alpha is the compass direction the device is facing in degrees
               compass: eventData.alpha,
             };
-            this.byteBeat.setExtra(data);
             this.#sendExtra(data);
           }, false);
         }
       }
+      this.#startTime = performance.now();   // time since the song started playing
+      this.#pauseTime = this.#startTime;     // time since the song was paused
+      this.#connected = false;               // whether or not we're playing the bytebeat
 
-      // This is the previous expressions so we don't double compile
-      this.expressions = [];
-
-      this.extra = ByteBeatCompiler.makeExtra();
-      this.time = 0;
-      this.startTime = performance.now();   // time since the song started playing
-      this.pauseTime = this.startTime;      // time since the song was paused
-      this.connected = false;               // whether or not we're playing the bytebeat
-
-      this.byteBeat = new ByteBeatProcessor();
-      this.byteBeat.setActualSampleRate(context.sampleRate);
+      this.#actualSampleRate = context.sampleRate;
       this.#callFunc('setActualSampleRate', context.sampleRate);
+
+      this.port.onmessage = this.#processMsg.bind(this);
+    }
+
+    #processMsg(event) {
+      const {cmd, data} = event.data;
+      switch (cmd) {
+        case 'asyncResult': {
+          const {msgId, error, result} = data;
+          const {resolve, reject} = this.#msgIdToResolveMap.get(msgId);
+          if (!resolve) {
+            throw new Error(`unknown msg id: ${msgId}`);
+          }
+          this.#msgIdToResolveMap.delete(msgId);
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+          break;
+        }
+        default:
+          throw Error(`unknown cmd: ${cmd}`);
+      }
     }
 
     #sendExtra(data) {
@@ -890,148 +1041,134 @@ registerProcessor('bytebeat-processor', BeatWorkletProcessor);
       });
     }
 
+    #callAsync(fnName, ...args) {
+      const msgId = this.#nextId++;
+      this.port.postMessage({
+        cmd: 'callAsync',
+        data: {
+          fn: fnName,
+          msgId,
+          args,
+        },
+      });
+      const m = this.#msgIdToResolveMap;
+      return new Promise((resolve, reject) => {
+        m.set(msgId, {resolve, reject});
+      });
+    }
+
     connect(dest) {
       super.connect(dest);
-      if (!this.connected) {
-        this.connected = true;
-        const elapsedPauseTime = performance.now() - this.pauseTime;
-        this.startTime += elapsedPauseTime;
+      if (!this.#connected) {
+        this.#connected = true;
+        const elapsedPauseTime = performance.now() - this.#pauseTime;
+        this.#startTime += elapsedPauseTime;
       }
     }
 
     disconnect() {
-      if (this.connected) {
-        this.connected = false;
-        this.pauseTime = performance.now();
+      if (this.#connected) {
+        this.#connected = false;
+        this.#pauseTime = performance.now();
         super.disconnect();
       }
     }
 
     resize(width, height) {
       const data = {width, height};
-      this.byteBeat.setExtra(data);
       this.#sendExtra(data);
     }
 
     reset() {
       this.#callFunc('reset');
-      this.byteBeat.reset();
-      this.startTime = performance.now();
-      this.pauseTime = this.startTime;
+      this.#startTime = performance.now();
+      this.#pauseTime = this.#startTime;
     }
 
     isRunning() {
-      return this.connected;
+      return this.#connected;
     }
 
     getTime() {
-      const time = this.connected ? performance.now() : this.pauseTime;
-      return (time - this.startTime) * 0.001 * this.byteBeat.getDesiredSampleRate() | 0;
+      const time = this.#connected ? performance.now() : this.#pauseTime;
+      return (time - this.#startTime) * 0.001 * this.getDesiredSampleRate() | 0;
     }
 
-    setExpressions(expressions, resetToZero) {
-      const compileExpressions = (expressions, expressionType, extra) => {
-        const funcs = [];
-        try {
-          for (let i = 0; i < expressions.length; ++i) {
-            const exp = expressions[i];
-            if (exp !== this.expressions[i]) {
-              funcs.push(ByteBeatCompiler.compileExpression(exp, expressionType, extra));
-            } else {
-              if (this.functions[i]) {
-                funcs.push(this.functions[i]);
-              }
-            }
-          }
-        } catch (e) {
-          if (e.stack) {
-            const m = /<anonymous>:1:(\d+)/.exec(e.stack);
-            if (m) {
-              const charNdx = parseInt(m[1]);
-              console.error(e.stack);
-              console.error(expressions.join('\n').substring(0, charNdx), '-----VVVVV-----\n', expressions.substring(charNdx));
-            }
-          } else {
-            console.error(e, e.stack);
-          }
-          throw e;
-        }
-        return funcs;
-      };
-      const funcs = compileExpressions(expressions, this.expressionType, this.extra);
-      if (!funcs) {
-        return;
+    async setExpressions(expressions, resetToZero) {
+      if (this.#busyPromise) {
+        await this.#busyPromise;
       }
-
-      // copy the expressions
-      this.expressions = expressions.slice(0);
-      this.functions = funcs;
-      const exp = funcs.map(({expression}) => expression);
-      // I feel like a Windows programmer. The reset to zero
-      // is needed because some expressions do stuff like
-      //
-      //     window.channels = t > 0 ? window.channels : data
-      //
-      // but because we are now async if I send 2 messages
-      // there's no guarantee the time will be zero between
-      // the message that sets the expression and the message
-      // that sets the time so it's possible t will never be zero
-      this.port.postMessage({
-        cmd: resetToZero ? 'setExpressionsAndResetToZero' : 'setExpressions',
-        data: exp,
+      let resolve;
+      this.#busyPromise = new Promise(r => {
+        resolve = r;
       });
-      this.byteBeat.setExpressions(exp);
-      if (resetToZero) {
-        this.reset();
+      try {
+        const data = await this.#callAsync('setExpressions', expressions, resetToZero);
+        this.#numChannels = data.numChannels;
+        this.#expressions = data.expressions;
+      } finally {
+        resolve();
       }
     }
 
     convertToDesiredSampleRate(rate) {
-      return Math.floor(rate * this.desiredSampleRate / this.actualSampleRate);
+      return Math.floor(rate * this.#desiredSampleRate / this.#actualSampleRate);
     }
 
     setDesiredSampleRate(rate) {
+      this.#desiredSampleRate = rate;
       this.#callFunc('setDesiredSampleRate', rate);
-      this.byteBeat.setDesiredSampleRate(rate);
     }
 
     getDesiredSampleRate() {
-      return this.byteBeat.getDesiredSampleRate();
+      return this.#desiredSampleRate;
     }
 
     setExpressionType(type) {
-      this.expressionType = type;
-      this.byteBeat.setExpressionType(type);
+      this.#expressionType = type;
       this.#callFunc('setExpressionType', type);
     }
 
     getExpressions() {
-      return this.expressions.slice();
+      return this.#expressions.slice();
     }
 
     getExpressionType() {
-      return this.byteBeat.getExpressionType();
+      return this.#expressionType;
     }
 
     setType(type) {
-      this.byteBeat.setType(type);
+      this.#type = type;
       this.#callFunc('setType', type);
     }
 
     getType() {
-      return this.byteBeat.getType();
+      return this.#type;
     }
 
     getNumChannels() {
-      return this.byteBeat.getNumChannels();
+      return this.#numChannels;
     }
 
-    process(dataLength, leftData, rightData) {
-      this.byteBeat.process(dataLength, leftData, rightData);
+    async createStack() {
+      return await this.#callAsync('createStack');
+    }
+    async createContext() {
+      return await this.#callAsync('createContext');
     }
 
-    getSampleForTime(time, context, stack, channel) {
-      return this.byteBeat.getSampleForTime(time, context, stack, channel);
+    destroyStack(id) {
+      return this.#callAsync('destroyStack', id);
+    }
+    async destroyContext(id) {
+      return await this.#callAsync('destroyContext', id);
+    }
+
+    async getSamplesForTimeRange(start, end, step, contextId, stackId, channel) {
+      if (this.#busyPromise) {
+        await this.#busyPromise;
+      }
+      return await this.#callAsync('getSamplesForTimeRange', start, end, step, contextId, stackId, channel);
     }
   }
 
