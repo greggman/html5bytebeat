@@ -305,7 +305,7 @@ async function start() {
   byteBeatNode.setType(ByteBeatNode.Type.byteBeat);
   byteBeatNode.setExpressionType(ByteBeatNode.ExpressionType.infix);
   byteBeatNode.setDesiredSampleRate(8000);
-  byteBeatNode.setExpressions(['((t >> 10) & 42) * t']);
+  await byteBeatNode.setExpressions(['((t >> 10) & 42) * t']);
   byteBeatNode.connect(context.destination);
 }
 ```
@@ -384,14 +384,14 @@ There's just one class `ByteBeatNode`. You must call the async function `ByteBea
    Returns the number of channels output
    by the current expression.
 
-* `getSampleForTime(time: number, context, stack, channel: number)`
+* `async getSamplesForTimeRange(start: number, end: number: numSamples: number, context, stack, channel: number)`
 
   Gets a -1 to +1 from the current expression for the given time (time is the `t` value in your expression)
 
   This function is useful for visualizers.
   
-  To make a stack call `ByteBeatNode.createStack()`. To create a context call
-  `ByteBeatNode.createContext`.
+  To make a stack call `byteBeat.createStack()`. To create a context call
+  `byteBeat.createContext`.
   A stack is used for postfix expressions.
   [See docs on postfix](#postfix). The context
   is used for keeping expressions state for
