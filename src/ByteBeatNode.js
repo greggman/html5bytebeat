@@ -33,6 +33,18 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     };
     this.expressions = [];
     this.functions = [];
+    this.nextObjId = 1;
+    this.idToObj = new Map();
+  }
+
+  #registerObj(obj) {
+    const id = this.nextObjId++;
+    this.idToObj.set(id, obj);
+    return id;
+  }
+
+  #deregisterObj(id) {
+    this.idToObj.delete(id);
   }
 
   // TODO: replace
@@ -47,8 +59,12 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
   callAsync({fn, msgId, args}) {
     let result;
     let error;
+    const transferables = [];
     try {
       result = this[fn].call(this, ...args);
+      if (result instanceof Float32Array) {
+        //transferables.push(result);
+      }
     } catch (e) {
       error = e;
     }
@@ -59,7 +75,7 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
         error,
         result,
       },
-    });
+    }, transferables);
   }
 
   setExpressions(expressions, resetToZero) {
@@ -116,6 +132,7 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
     }
     return {
       numChannels: this.byteBeat.getNumChannels(),
+      expressions: exp,
     };
   }
 
@@ -134,6 +151,31 @@ class BeatWorkletProcessor extends AudioWorkletProcessor {
       this.byteBeat.process(outputs[0][0].length, outputs[0][0], outputs[0][1]);
     //}
     return true;
+  }
+
+  createStack() {
+    return this.#registerObj(new WrappingStack());
+  }
+  createContext() {
+    return this.#registerObj(ByteBeatCompiler.makeContext());
+  }
+  destroyStack(id) {
+    this.#deregisterObj(id);
+  }
+  destroyContext(id) {
+    this.#deregisterObj(id);
+  }
+
+  getSamplesForTimeRange(start, end, step, contextId, stackId, channel = 0) {
+    const context = this.idToObj.get(contextId);
+    const stack = this.idToObj.get(stackId);
+    const len = Math.ceil((end - start) / step);
+    const data = new Float32Array(len);
+    let cursor = 0;
+    for (let time = start; time < end; time += step) {
+      data[cursor++] = this.byteBeat.getSampleForTime(time, context, stack, channel);
+    }
+    return data;
   }
 }
 
@@ -165,19 +207,19 @@ export default class ByteBeatNode extends AudioWorkletNode {
   static async setup(context) {
     return await context.audioWorklet.addModule(workerURL);
   }
-  static createStack() {
-    return new WrappingStack();
-  }
-  static createContext() {
-    return ByteBeatCompiler.makeContext();
-  }
 
+  #startTime = 0; // time since the song started playing
+  #pauseTime = 0; // time since the song was paused
+  #connected = false;
+  #expressionType = 0;
+  #expressions = [];
   #msgIdToResolveMap = new Map();
   #nextId = 0;
   #type;
   #numChannels = 1;
   #desiredSampleRate;
   #actualSampleRate;
+  #busyPromise;
 
   constructor(context) {
     super(context, 'bytebeat-processor', { outputChannelCount: [2] });
@@ -209,15 +251,9 @@ export default class ByteBeatNode extends AudioWorkletNode {
         }, false);
       }
     }
-
-    // This is the previous expressions so we don't double compile
-    this.expressions = [];
-
-    this.extra = ByteBeatCompiler.makeExtra();
-    this.time = 0;
-    this.startTime = performance.now();   // time since the song started playing
-    this.pauseTime = this.startTime;      // time since the song was paused
-    this.connected = false;               // whether or not we're playing the bytebeat
+    this.#startTime = performance.now();   // time since the song started playing
+    this.#pauseTime = this.#startTime;     // time since the song was paused
+    this.#connected = false;               // whether or not we're playing the bytebeat
 
     this.#actualSampleRate = context.sampleRate;
     this.#callFunc('setActualSampleRate', context.sampleRate);
@@ -282,17 +318,17 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   connect(dest) {
     super.connect(dest);
-    if (!this.connected) {
-      this.connected = true;
-      const elapsedPauseTime = performance.now() - this.pauseTime;
-      this.startTime += elapsedPauseTime;
+    if (!this.#connected) {
+      this.#connected = true;
+      const elapsedPauseTime = performance.now() - this.#pauseTime;
+      this.#startTime += elapsedPauseTime;
     }
   }
 
   disconnect() {
-    if (this.connected) {
-      this.connected = false;
-      this.pauseTime = performance.now();
+    if (this.#connected) {
+      this.#connected = false;
+      this.#pauseTime = performance.now();
       super.disconnect();
     }
   }
@@ -304,23 +340,34 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   reset() {
     this.#callFunc('reset');
-    this.startTime = performance.now();
-    this.pauseTime = this.startTime;
+    this.#startTime = performance.now();
+    this.#pauseTime = this.#startTime;
   }
 
   isRunning() {
-    return this.connected;
+    return this.#connected;
   }
 
   getTime() {
-    const time = this.connected ? performance.now() : this.pauseTime;
-    return (time - this.startTime) * 0.001 * this.getDesiredSampleRate() | 0;
+    const time = this.#connected ? performance.now() : this.#pauseTime;
+    return (time - this.#startTime) * 0.001 * this.getDesiredSampleRate() | 0;
   }
 
   async setExpressions(expressions, resetToZero) {
-    const data = await this.#callAsync('setExpressions', expressions, resetToZero);
-    this.#numChannels = data.numChannels;
-    return;
+    if (this.#busyPromise) {
+      await this.#busyPromise;
+    }
+    let resolve;
+    this.#busyPromise = new Promise(r => {
+      resolve = r;
+    });
+    try {
+      const data = await this.#callAsync('setExpressions', expressions, resetToZero);
+      this.#numChannels = data.numChannels;
+      this.#expressions = data.expressions;
+    } finally {
+      resolve();
+    }
   }
 
   convertToDesiredSampleRate(rate) {
@@ -337,16 +384,16 @@ export default class ByteBeatNode extends AudioWorkletNode {
   }
 
   setExpressionType(type) {
-    this.expressionType = type;
+    this.#expressionType = type;
     this.#callFunc('setExpressionType', type);
   }
 
   getExpressions() {
-    return this.expressions.slice();
+    return this.#expressions.slice();
   }
 
   getExpressionType() {
-    return this.expressionType;
+    return this.#expressionType;
   }
 
   setType(type) {
@@ -360,5 +407,26 @@ export default class ByteBeatNode extends AudioWorkletNode {
 
   getNumChannels() {
     return this.#numChannels;
+  }
+
+  async createStack() {
+    return await this.#callAsync('createStack');
+  }
+  async createContext() {
+    return await this.#callAsync('createContext');
+  }
+
+  destroyStack(id) {
+    return this.#callAsync('destroyStack', id);
+  }
+  async destroyContext(id) {
+    return await this.#callAsync('destroyContext', id);
+  }
+
+  async getSamplesForTimeRange(start, end, step, contextId, stackId, channel) {
+    if (this.#busyPromise) {
+      await this.#busyPromise;
+    }
+    return await this.#callAsync('getSamplesForTimeRange', start, end, step, contextId, stackId, channel);
   }
 }
