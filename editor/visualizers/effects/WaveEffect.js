@@ -1,5 +1,4 @@
 import * as twgl from '../../../js/twgl-full.module.js';
-import ByteBeatNode from '../../../src/ByteBeatNode.js';
 import { drawEffect } from './effect-utils.js';
 
 const colorRed = new Float32Array([1, 0, 0, 1]);
@@ -44,13 +43,11 @@ export default class WaveEffect {
     this.position = 0;
   }
   resize(gl) {
-    this.beatContext = ByteBeatNode.createContext();
-    this.beatStack = ByteBeatNode.createStack();
-
     const width = gl.drawingBufferWidth;
     const lineHeight = new Float32Array(width);
     const column = new Float32Array(width);
 
+    this.state = 'init';
     this.width = width;
     this.position = 0;
     this.then = performance.now();
@@ -80,8 +77,46 @@ export default class WaveEffect {
       this.bufferInfoR.numElements = width;
     }
   }
+  async #update(gl, byteBeat, elapsedTimeMS) {
+    if (this.state === 'init') {
+      this.state = 'initializing';
+      if (this.beatContext) {
+        byteBeat.destroyContext(this.beatContext);
+        byteBeat.destroyStack(this.beatStack);
+      }
+      this.beatContext = await byteBeat.createContext();
+      this.beatStack = await byteBeat.createStack();
+      this.state = 'running';
+    }
+    if (this.state === 'running') {
+      this.state = 'waiting';
+      const {bufferInfoL, bufferInfoR, beatContext: context, beatStack: stack} = this;
+      const numChannels = byteBeat.getNumChannels();
+      const startTime = this.position;
+      const endTime = startTime + elapsedTimeMS * 0.001 * byteBeat.getDesiredSampleRate() | 0;
+      this.position = endTime;
+      const dataP = [];
+      for (let channel = 0; channel < numChannels; ++channel) {
+        dataP.push(byteBeat.getSamplesForTimeRange(
+          startTime,
+          endTime,
+          this.lineHeightL.length,
+          context,
+          stack,
+          channel,
+        ));
+      }
+      const data = await Promise.all(dataP);
+      for (let channel = 0; channel < numChannels; ++channel) {
+        const bufferInfo = channel ? bufferInfoR : bufferInfoL;
+        gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, data[channel].subarray(0, this.lineHeightL.length));
+      }
+      this.state = 'running';
+    }
+  }
   render(gl, commonUniforms, byteBeat) {
-    const {uniforms, programInfo, bufferInfoL, bufferInfoR, beatContext: context, beatStack: stack} = this;
+    const {uniforms, programInfo, bufferInfoL, bufferInfoR} = this;
     const numChannels = byteBeat.getNumChannels();
 
     const targetTimeMS = 1000 / (48000 / 4096);
@@ -90,24 +125,8 @@ export default class WaveEffect {
     const run = elapsedTimeMS >= targetTimeMS;
     if (run) {
       this.then = now;
-      if (byteBeat.isRunning() ) {
-        const startTime = this.position;
-        const endTime = startTime + elapsedTimeMS * 0.001 * byteBeat.getDesiredSampleRate() | 0;
-        const duration = (endTime - startTime);
-
-        this.position = endTime;
-        for (let channel = 0; channel < numChannels; ++channel) {
-          const bufferInfo = channel ? bufferInfoR : bufferInfoL;
-
-          const dst = channel ? this.lineHeightR : this.lineHeightL;
-          for (let i = 0; i < dst.length; ++i) {
-            const position = startTime + i * duration / dst.length | 0;
-            dst[i] = byteBeat.getSampleForTime(position, context, stack, channel);
-          }
-
-          gl.bindBuffer(gl.ARRAY_BUFFER, bufferInfo.attribs.height.buffer);
-          gl.bufferSubData(gl.ARRAY_BUFFER, 0, dst);
-        }
+      if (byteBeat.isRunning()) {
+        this.#update(gl, byteBeat, elapsedTimeMS);
       }
     }
 

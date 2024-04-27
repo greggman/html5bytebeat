@@ -87,7 +87,7 @@ export default class DataEffect {
     const numChannels = byteBeat.getNumChannels();
     const dataP = [];
     for (let channel = 0; channel < numChannels; ++channel) {
-      dataP.push(byteBeat.getSamplesForTimeRange(start, start + kChunkSize, 1, this.dataContext, this.dataStack, channel));
+      dataP.push(byteBeat.getSamplesForTimeRange(start, start + kChunkSize, kChunkSize, this.dataContext, this.dataStack, channel));
     }
     const data = await Promise.all(dataP);
     const chunkId = start / kChunkSize;
