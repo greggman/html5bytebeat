@@ -6,7 +6,7 @@
     "build": "rollup -c"
   },
   "dependencies": {
-    "bytebeat.js": "^1.0.4"
+    "bytebeat.js": "^2.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^14.1.0",
