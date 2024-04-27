@@ -1,6 +1,7 @@
 import * as twgl from '../../../js/twgl-full.module.js';
-import ByteBeatNode from '../../../src/ByteBeatNode.js';
 import { drawEffect } from './effect-utils.js';
+
+const kChunkSize = 1024;
 
 export default class SampleEffect {
   constructor(gl) {
@@ -52,9 +53,6 @@ export default class SampleEffect {
         gl.LUMINANCE, gl.UNSIGNED_BYTE, this.sampleBuf);
   }
   resize(gl) {
-    this.sampleContext = ByteBeatNode.createContext();
-    this.sampleStack = ByteBeatNode.createStack();
-
     this.sampleWidth = gl.drawingBufferWidth;
     const sampleBuf = new Uint8Array(this.sampleWidth);
     this.samplePos = 0;
@@ -65,13 +63,73 @@ export default class SampleEffect {
         gl.LUMINANCE, gl.UNSIGNED_BYTE, sampleBuf);
     this.sampleBuf = sampleBuf;
     this.sampleTime = 0;
+    this.data = new Map();
+    this.state = 'init';
   }
+
+  async #getData(byteBeat) {
+    this.updating = true;
+    const start = Math.ceil(this.sampleTime / kChunkSize) * kChunkSize;
+    const numChannels = byteBeat.getNumChannels();
+    const dataP = [];
+    for (let channel = 0; channel < numChannels; ++channel) {
+      dataP.push(byteBeat.getSamplesForTimeRange(start, start + kChunkSize, kChunkSize, this.sampleContext, this.sampleStack, channel));
+    }
+    const data = await Promise.all(dataP);
+    const chunkId = start / kChunkSize;
+    this.data.set(chunkId, data);
+    this.updating = false;
+  }
+
+  #update(byteBeat) {
+    const noData = this.data.length === 0;
+    const passingHalfWayPoint = (this.oldSampleTime % kChunkSize) < kChunkSize / 2 && (this.sampleTime % kChunkSize) >= kChunkSize / 2;
+    const passingChunk = (this.oldSampleTime % kChunkSize) >= kChunkSize - 2 && this.sampleTime % kChunkSize === 0;
+    const oldChunkId = this.oldSampleTime / kChunkSize | 0;
+    this.oldSampleTime = this.sampleTime;
+    if (passingChunk) {
+      this.data.delete(oldChunkId);
+    }
+    if (!this.updating && (noData || passingHalfWayPoint)) {
+      this.#getData(byteBeat);
+    }
+  }
+
+  async #init(byteBeat) {
+    if (this.sampleContext) {
+      byteBeat.destroyContext(this.sampleContext);
+      byteBeat.destroyStack(this.sampleStack);
+    }
+    this.sampleContext = await byteBeat.createContext();
+    this.sampleStack = await byteBeat.createStack();
+    await this.#getData(byteBeat);
+    this.state = 'running';
+  }
+
   render(gl, commonUniforms, byteBeat) {
     const {uniforms, programInfo, bufferInfo} = this;
 
+    if (this.state === 'init') {
+      this.state = 'initializing';
+      this.#init(byteBeat);
+    }
+    if (this.state !== 'running') {
+      return;
+    }
+    this.#update(byteBeat);
+
     gl.bindTexture(gl.TEXTURE_2D, this.sampleTex);
     for (let ii = 0; ii < 2; ++ii) {
-      this.samplePixel[0] = Math.round(byteBeat.getSampleForTime(this.sampleTime++, this.sampleContext, this.sampleStack) * 127) + 127;
+      const chunkId = this.sampleTime++ / kChunkSize | 0;
+      const chunk = this.data.get(chunkId);
+      const ndx = this.sampleTime % kChunkSize;
+      try {
+        const ch = chunk[0];
+        const sample = ch[ndx];
+        this.samplePixel[0] = Math.round(sample * 127) + 127;
+      } catch {
+        //
+      }
       gl.texSubImage2D(gl.TEXTURE_2D, 0, this.samplePos, 0, 1, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.samplePixel);
       this.samplePos = (this.samplePos + 1) % this.sampleWidth;
     }

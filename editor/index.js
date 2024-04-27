@@ -12,7 +12,7 @@ import NullVisualizer from './visualizers/NullVisualizer.js';
 
 import DataEffect from './visualizers/effects/DataEffect.js';
 import FFTEffect from './visualizers/effects/FFTEffect.js';
-//import SampleEffect from './visualizers/effects/SampleEffect.js';
+// import SampleEffect from './visualizers/effects/SampleEffect.js';
 import VSAEffect from './visualizers/effects/VSAEffect.js';
 import WaveEffect from './visualizers/effects/WaveEffect.js';
 
