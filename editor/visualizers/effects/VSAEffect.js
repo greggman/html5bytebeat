@@ -306,7 +306,7 @@ export default class VSAEffect {
       this.pendingUrl = undefined;
       this.compiling = true;
       const mungedUrl = url.includes('vertexshaderart.com')
-        ? `${url.replace('//www.', '//')}/art.json`
+        ? `${url}/art.json`
         : url;
       const req = await fetch(mungedUrl);
       const vsa = await req.json();
