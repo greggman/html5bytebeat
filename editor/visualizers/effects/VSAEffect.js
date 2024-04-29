@@ -286,7 +286,7 @@ export default class VSAEffect {
   async setURL(url) {
     try {
       const u = new URL(url, window.location.href);
-      if (u.hostname !== window.location.hostname && u.hostname !== 'www.vertexshaderart.com') {
+      if (u.hostname !== window.location.hostname && u.hostname !== 'www.vertexshaderart.com' && u.hostname !== 'vertexshaderart.com') {
         return;
       }
       if (url === this.currentUrl) {
@@ -305,7 +305,10 @@ export default class VSAEffect {
       this.currentUrl = this.pendingUrl;
       this.pendingUrl = undefined;
       this.compiling = true;
-      const req = await fetch(`${url}?format=json`);
+      const mungedUrl = url.includes('vertexshaderart.com')
+        ? `${url.replace('//www.', '//')}/art.json`
+        : url;
+      const req = await fetch(mungedUrl);
       const vsa = await req.json();
       const gl = this.gl;
       const vs = applyTemplateToShader(vsa.settings.shader);
