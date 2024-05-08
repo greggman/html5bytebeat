@@ -1,5 +1,9 @@
 
 import * as twgl from '../../../js/twgl-full.module.js';
+import {
+  decode,
+} from '../../base64.js';
+import compressor from '../../compressor.js';
 
 const m4 = twgl.m4;
 
@@ -305,11 +309,19 @@ export default class VSAEffect {
       this.currentUrl = this.pendingUrl;
       this.pendingUrl = undefined;
       this.compiling = true;
-      const mungedUrl = url.includes('vertexshaderart.com')
-        ? `${url}/art.json`
-        : url;
-      const req = await fetch(mungedUrl);
-      const vsa = await req.json();
+      let vsa;
+      if (u.hash.includes('s=')) {
+        const q = new URLSearchParams(u.hash.substring(1));
+        const bytes = decode(q.get('s'));
+        const text = await new Promise((resolve, reject) => compressor.decompress(bytes, resolve, () => {}, reject));
+        vsa = JSON.parse(text);
+      } else {
+        const mungedUrl = url.includes('vertexshaderart.com')
+          ? `${url}/art.json`
+          : url;
+        const req = await fetch(mungedUrl);
+        vsa = await req.json();
+      }
       const gl = this.gl;
       const vs = applyTemplateToShader(vsa.settings.shader);
       const programInfo = await twgl.createProgramInfoAsync(gl, [vs, s_fs]);

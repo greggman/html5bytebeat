@@ -1,8 +1,7 @@
-/* global LZMA */
 /* global WavMaker */
 import '../js/scrollbars.js';
 import * as twgl from '../js/twgl-full.module.js';
-
+import compressor from './compressor.js';
 import { createElem as el } from './elem.js';
 
 import ByteBeatNode from '../src/ByteBeatNode.js';
@@ -66,7 +65,6 @@ let visualTypeElem;
 let saveElem;
 let compileStatusElem;
 let canvas;
-let compressor;
 let controls;
 let doNotSetURL = true;
 const g_slow = false;
@@ -134,7 +132,6 @@ const setVisualizer = ndx => {
 };
 
 async function main() {
-  compressor = new LZMA( 'js/lzma_worker.js' );
   canvas = $('visualization');
   controls = $('controls');
 
