@@ -2,6 +2,7 @@
   "name": "html5bytebeat-via-npm",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "scripts": {
     "build": "rollup -c"
   },
@@ -9,8 +10,8 @@
     "bytebeat.js": "^2.0.0"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^14.1.0",
-    "rollup": "^2.79.0"
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "rollup": "^4.24.0"
   },
   "keywords": [],
   "author": "",
