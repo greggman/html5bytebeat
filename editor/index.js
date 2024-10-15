@@ -406,7 +406,7 @@ async function main() {
     // even if one of the functions below fails (given we're
     // running user code)
     requestAnimationFrame(render, canvas);
-    if (playing) {
+    if (playing || g_captureFn) {
       updateTimeDisplay();
       g_visualizer.render(g_byteBeat, g_analyzers);
       if (g_captureFn) {
