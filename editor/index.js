@@ -527,22 +527,17 @@ async function showSaveDialog() {
         const numSamplesNeeded = sampleRate * numSeconds | 0;
         const numChannels = 2;
         const wavMaker = new WavMaker(sampleRate, numChannels);
-        const context = ByteBeatNode.createContext();
-        const stack = ByteBeatNode.createStack();
+        const context = await g_byteBeat.createContext();
+        const stack = await g_byteBeat.createStack();
         for (let i = 0; i < numSamplesNeeded; i += sampleRate) {
           const start = i;
           const end = Math.min(i + sampleRate, numSamplesNeeded);
-          const output = [
-            new Float32Array(end - start),
-            new Float32Array(end - start),
-          ];
-          for (let j = start; j < end; ++j) {
-            for (let ch = 0; ch < numChannels; ++ch) {
-              const s = g_byteBeat.getSampleForTime(j, context, stack, ch);
-              output[ch][j - i] = s;
-            }
+          const dataP = [];
+          for (let channel = 0; channel < numChannels; ++channel) {
+            dataP.push(g_byteBeat.getSamplesForTimeRange(start, end, end - start, context, stack, channel));
           }
-          wavMaker.addData(output);
+          const data = await Promise.all(dataP);
+          wavMaker.addData(data);
           await wait();
         }
         const blob = wavMaker.getWavBlob();

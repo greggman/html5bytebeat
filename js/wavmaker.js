@@ -24,8 +24,8 @@ class WavMaker {
   }
   getWavBlob() {
     const {numSamples, numChannels, sampleRate, blobs} = this;
-    var output = new Uint8Array(44);
-    var view = new DataView(output.buffer);
+    const output = new Uint8Array(44);
+    const view = new DataView(output.buffer);
 
     writeString(view, 0, 'RIFF');                           // RIFF identifier
     view.setUint32(4, 36 + this.numSamples * 2, true);      // RIFF chunk length
@@ -39,7 +39,7 @@ class WavMaker {
     view.setUint16(32, numChannels * 2, true);              // block align (channel count * bytes per sample)
     view.setUint16(34, 16, true);                           // bits per sample
     writeString(view, 36, 'data');                          // data chunk identifier
-    view.setUint32(40, numSamples * numChannels* 2, true);  // data chunk length
+    view.setUint32(40, numSamples * numChannels * 2, true); // data chunk length
 
     return new Blob([new Blob([output]), ...blobs], {type: 'audio/wav'});
   }
