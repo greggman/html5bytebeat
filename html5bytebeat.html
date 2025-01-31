@@ -159,6 +159,37 @@ summary:focus,
     background-color: rgb(0, 0, 66);
     display: block;
 }
+.vertical-range {
+  display: inline;
+  position: relative;
+  text-align: center;
+}
+.vertical-range>* {
+  display: inline;
+}
+.vertical-range input {
+  position: absolute;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  appearance: slider-vertical;
+  vertical-align: bottom;
+}
+.vertical-range>* {
+  display: inline;
+}
+.vertical-range .vertical-range-holder {
+  display: none;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  left: calc(50% - 10px);
+  top: 100%;
+}
+.vertical-range:focus-within .vertical-range-holder {
+  display: inline-flex !important;
+  justify-content: center;
+}
+
 .status {
   color: #0F0;
 }
@@ -194,7 +225,7 @@ textarea:focus {
     outline: 0; /* this removes browser-side outline */
 }
 
-button, select, .buttonstyle, #showSongs {
+button, select, .buttonstyle, #showSongs, .vertical-range {
     padding: 8px 12px 8px 12px;
     white-space: pre;
     border: none;

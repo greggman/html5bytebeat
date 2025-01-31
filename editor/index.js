@@ -35,8 +35,10 @@ function strip(s) {
 }
 
 let g_context;
+let g_gainNode;
 let g_byteBeat;
 let g_filter;
+let g_localSettings;
 const g_analyzers = [];
 let g_splitter;
 let g_merger;
@@ -90,9 +92,11 @@ function reconnect() {
   const lastNode = connectFor2Channels();
   if (g_filter) {
     lastNode.connect(g_filter);
-    g_filter.connect(g_context.destination);
+    g_filter.connect(g_gainNode);
+    g_gainNode.connect(g_context.destination);
   } else {
-    lastNode.connect(g_context.destination);
+    lastNode.connect(g_gainNode);
+    g_gainNode.connect(g_context.destination);
   }
   g_context.resume();
 }
@@ -131,12 +135,36 @@ const setVisualizer = ndx => {
   setSelectOption(visualTypeElem, ndx);
 };
 
+try {
+  g_localSettings = JSON.parse(localStorage.getItem('localSettings'));
+} catch {
+}
+
+{
+  if (!g_localSettings || typeof g_localSettings !== 'object') {
+    g_localSettings = {};
+  }
+  const defaultSettings = {
+    volume: 100,
+  };
+  for (const [key, value] of Object.entries(defaultSettings)) {
+    if (typeof g_localSettings[key] != typeof value) {
+      g_localSettings[key] = value;
+    }
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem('localSettings', JSON.stringify(g_localSettings));
+}
+
 async function main() {
   canvas = $('visualization');
   controls = $('controls');
 
   g_context = new AudioContext();
   g_context.resume();  // needed for safari
+  g_gainNode = new GainNode(g_context);
   await ByteBeatNode.setup(g_context);
   g_byteBeat = new ByteBeatNode(g_context);
 
@@ -204,6 +232,22 @@ async function main() {
     return select;
   }
 
+  function addVerticalRange(options, props) {
+    const fn = props.onChange;
+    const valueElem = el('div', { textContent: options.value ?? 0 });
+    return el('div', {className: 'vertical-range', tabIndex: 0}, [
+      valueElem,
+      el('div', {className: 'vertical-range-holder'}, [
+          el('input', { ...options, type: 'range', onInput: (e) => {
+            valueElem.textContent = e.target.value;
+            if (fn) {
+              fn(e);
+            }
+          },}),
+        ]),
+    ])
+  }
+
   beatTypeElem = addSelection(s_beatTypes, 0, {
     onChange(event) {
       g_byteBeat.setType(event.target.selectedIndex);
@@ -228,6 +272,15 @@ async function main() {
     },
   });
   controls.appendChild(sampleRateElem);
+
+  const volumeElem = addVerticalRange({min: 1, max: 100, step: 1, value: g_localSettings.volume }, {
+    onChange(event) {
+      g_gainNode.gain.value = event.target.value / 100;
+      g_localSettings.volume = parseInt(event.target.value);
+      saveSettings();
+    },
+  });
+  controls.appendChild(volumeElem);
 
   if (g_slow) {
     g_visualizers = [
