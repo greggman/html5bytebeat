@@ -164,7 +164,7 @@ async function main() {
 
   g_context = new AudioContext();
   g_context.resume();  // needed for safari
-  g_gainNode = new GainNode(g_context);
+  g_gainNode = new GainNode(g_context, { gain: g_localSettings.volume / 100 });
   await ByteBeatNode.setup(g_context);
   g_byteBeat = new ByteBeatNode(g_context);
 
