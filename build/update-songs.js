@@ -35,6 +35,9 @@ async function getComments() {
     owner: 'greggman',
     repo: 'html5bytebeat',
     issue_number: '17',
+    headers: {
+      Accept: 'application/vnd.github.raw+json',
+    },
   });
   return comments;
 }
