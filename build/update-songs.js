@@ -5,11 +5,15 @@ const path = require('path');
 const lzma = require('lzma');
 
 async function getComments() {
-  if (process.argv[2]) {
-    const body = fs.readFileSync(process.argv[2], {encoding: 'utf-8'});
+  const filename = process.argv[2];
+  if (filename) {
+    const content = fs.readFileSync(process.argv[2], {encoding: 'utf-8'});
+    if (filename.endsWith('.json')) {
+      return JSON.parse(content);
+    }
     return [
       {
-        body,
+        body: content,
         reactions: {},
         user: {
           id: 123,
@@ -36,7 +40,7 @@ async function getComments() {
     repo: 'html5bytebeat',
     issue_number: '17',
     headers: {
-      Accept: 'application/vnd.github.raw+json',
+      accept: 'application/vnd.github.v3.raw+json',
     },
   });
   return comments;
@@ -89,6 +93,8 @@ async function main() {
     songs.push(...results.map(([, title, link]) => {
       const {code} = readURL(link.substring(link.indexOf('#') + 1));
       const size = minimize(code).length;
+      // fix title -- this seems hacked to me
+      title = title.replaceAll(/\\(.)/g, '$1');
       return {title, size, link, reactions, groupSize: results.length, user: {login, id}};
     }));
   }
