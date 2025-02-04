@@ -8,9 +8,9 @@ export default class ByteBeatCompiler {
 
   static removeCommentsAndLineBreaks(x) {
     // remove comments (hacky)
-    x = x.replace(/\/\/.*/g, ' ');
-    x = x.replace(/\n/g, ' ');
-    x = x.replace(/\/\*.*?\*\//g, ' ');
+    //x = x.replace(/\/\/.*/g, ' ');
+    //x = x.replace(/\n/g, ' ');
+    //x = x.replace(/\/\*.*?\*\//g, ' ');
     return x;
   }
 
@@ -326,7 +326,7 @@ export default class ByteBeatCompiler {
         } else {  // infix
           x = `
               return function(t, i, stack, window, extra) { 
-                  return ${ByteBeatCompiler.strip(x)};
+                  return 0,${ByteBeatCompiler.strip(x)};
               }`;
         }
       }
