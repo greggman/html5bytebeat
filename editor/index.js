@@ -273,9 +273,9 @@ async function main() {
   });
   controls.appendChild(sampleRateElem);
 
-  const volumeElem = addVerticalRange({min: 1, max: 100, step: 1, value: g_localSettings.volume }, {
+  const volumeElem = addVerticalRange({min: 0, max: 100, step: 1, value: g_localSettings.volume }, {
     onChange(event) {
-      g_gainNode.gain.value = event.target.value / 100;
+      g_gainNode.gain.value = Math.pow(event.target.value / 100, 2);
       g_localSettings.volume = parseInt(event.target.value);
       saveSettings();
     },
@@ -486,6 +486,7 @@ async function main() {
     g_byteBeat.setType(parseInt(t));
     g_byteBeat.setExpressionType(parseInt(e));
     g_byteBeat.setDesiredSampleRate(parseInt(s));
+    g_byteBeat.reset();
     if (data.v) {
       setVisualizerByName(data.v);
     }
