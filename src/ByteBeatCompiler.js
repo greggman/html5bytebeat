@@ -8,9 +8,9 @@ export default class ByteBeatCompiler {
 
   static removeCommentsAndLineBreaks(x) {
     // remove comments (hacky)
-    //x = x.replace(/\/\/.*/g, ' ');
-    //x = x.replace(/\n/g, ' ');
-    //x = x.replace(/\/\*.*?\*\//g, ' ');
+    x = x.replace(/\/\/.*/g, ' ');
+    x = x.replace(/\n/g, ' ');
+    x = x.replace(/\/\*.*?\*\//g, ' ');
     return x;
   }
 
@@ -331,7 +331,6 @@ export default class ByteBeatCompiler {
         }
       }
 
-      x = ByteBeatCompiler.removeCommentsAndLineBreaks(x);
       // Translate a few things.
       function replacer(str, obj, p1, name) {
         return Object.prototype.hasOwnProperty.call(obj, p1) ? (name + p1) : str;
